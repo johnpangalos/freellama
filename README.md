@@ -23,7 +23,26 @@ deno task dev run Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M
 deno task dev run Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M "Say hello in five words"
 ```
 
-Build a standalone binary with `deno task compile`, then use `./freellama` directly.
+## Install
+
+```bash
+deno task install   # install `freellama` on your PATH (deno install)
+deno task compile   # or build a standalone binary: ./freellama
+```
+
+Cross-compile a binary for another platform with Deno's `--target`, e.g.:
+
+```bash
+deno compile --target x86_64-unknown-linux-gnu \
+  --allow-read --allow-write --allow-net --allow-run \
+  --allow-env=FREELLAMA_HOME,FREELLAMA_CTX,HF_TOKEN,HOME,USERPROFILE \
+  --output freellama-linux src/cli.ts
+```
+
+freellama runs under scoped Deno permissions rather than `--allow-all`: `--allow-env` is limited to
+the variables it reads, and it requests no `--allow-ffi` or `--allow-sys`. Network, subprocess, and
+disk access stay open because model downloads redirect through Hugging Face / GitHub CDNs and the
+`llama-server` binary path is resolved at runtime.
 
 ## Commands
 
@@ -36,7 +55,8 @@ Build a standalone binary with `deno task compile`, then use `./freellama` direc
 | `serve [--host H] [--port P]` | OpenAI-compatible server (default `127.0.0.1:11434`)                                 |
 
 In the REPL: `/clear` resets the conversation, `/bye` (or Ctrl+D) exits, Ctrl+C interrupts a
-response without exiting.
+response without exiting. Piping stdin (`echo "hi" | freellama run <model>`) skips the prompts and
+writes only the reply, so `run` composes in shell pipelines.
 
 ## OpenAI-compatible server
 

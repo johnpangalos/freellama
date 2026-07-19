@@ -52,14 +52,19 @@ export async function runCommand(args: string[]): Promise<void> {
       return;
     }
 
-    console.error(`\n${model.name} ready. Type a message, /clear to reset, /bye to exit.\n`);
+    // Interactive tty gets prompts and a banner; piped stdin (echo ... | freellama run)
+    // runs clean so stdout is just the model's replies.
+    const interactive = Deno.stdin.isTerminal();
+    if (interactive) {
+      console.error(`\n${model.name} ready. Type a message, /clear to reset, /bye to exit.\n`);
+    }
     const history: ChatMessage[] = [];
     const lines = Deno.stdin.readable
       .pipeThrough(new TextDecoderStream())
       .pipeThrough(new LineStream())[Symbol.asyncIterator]();
 
     while (true) {
-      print(">>> ");
+      if (interactive) print(">>> ");
       const { value: line, done } = await lines.next();
       if (done || line === undefined) break; // Ctrl+D / EOF
       const input = line.trim();

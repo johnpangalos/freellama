@@ -1,13 +1,15 @@
 {
   "tasks": {
-    "dev": "deno run -A src/cli.ts",
+    "dev": "deno run --allow-read --allow-write --allow-net --allow-run --allow-env=FREELLAMA_CTX,FREELLAMA_DEBUG,FREELLAMA_HOME,FREELLAMA_LLAMA_SERVER,FREELLAMA_LLAMA_VERSION,FREELLAMA_SERVER_ARGS,GITHUB_TOKEN,HF_TOKEN,HOME,USERPROFILE src/cli.ts",
     "check": "deno check src/cli.ts && deno lint && deno fmt --check",
     "test": "deno test -A",
     "fmt": "deno fmt",
     "lint": "deno lint",
-    "compile": "deno compile -A --output freellama src/cli.ts"
+    "compile": "deno compile --allow-read --allow-write --allow-net --allow-run --allow-env=FREELLAMA_CTX,FREELLAMA_DEBUG,FREELLAMA_HOME,FREELLAMA_LLAMA_SERVER,FREELLAMA_LLAMA_VERSION,FREELLAMA_SERVER_ARGS,GITHUB_TOKEN,HF_TOKEN,HOME,USERPROFILE --output freellama src/cli.ts",
+    "install": "deno install --global --force --name freellama --allow-read --allow-write --allow-net --allow-run --allow-env=FREELLAMA_CTX,FREELLAMA_DEBUG,FREELLAMA_HOME,FREELLAMA_LLAMA_SERVER,FREELLAMA_LLAMA_VERSION,FREELLAMA_SERVER_ARGS,GITHUB_TOKEN,HF_TOKEN,HOME,USERPROFILE src/cli.ts"
   },
   "imports": {
+    "@std/cli": "jsr:@std/cli@^1",
     "fflate": "npm:fflate@^0.8"
   },
   "fmt": {

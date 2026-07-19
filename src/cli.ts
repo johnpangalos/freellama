@@ -1,5 +1,8 @@
-#!/usr/bin/env -S deno run -A
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-run --allow-env=FREELLAMA_CTX,FREELLAMA_DEBUG,FREELLAMA_HOME,FREELLAMA_LLAMA_SERVER,FREELLAMA_LLAMA_VERSION,FREELLAMA_SERVER_ARGS,GITHUB_TOKEN,HF_TOKEN,HOME,USERPROFILE
 // freellama — run LLMs locally, powered by llama.cpp. See README.md for credits.
+// Least privilege: env is scoped to the vars freellama reads; net/run/read/write
+// stay open because model downloads redirect through hf/github CDNs and the
+// llama-server binary path is resolved at runtime. No --allow-ffi/--allow-sys.
 
 import { pullCommand } from "./commands/pull.ts";
 import { listCommand } from "./commands/list.ts";

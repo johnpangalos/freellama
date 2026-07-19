@@ -1,7 +1,7 @@
 // OpenAI-compatible front server. Chat requests are reverse-proxied to a
 // llama-server subprocess that is lazily started for the requested model.
 
-import { parseArgs } from "node:util";
+import { parseArgs } from "@std/cli/parse-args";
 import { getModel, listModels } from "../lib/store.ts";
 import { ensureLlamaServer } from "../lib/backend.ts";
 import { type LlamaServerHandle, startLlamaServer } from "../lib/runner.ts";
@@ -16,14 +16,11 @@ function openaiError(status: number, message: string, type: string, code?: strin
 }
 
 export async function serveCommand(args: string[]): Promise<void> {
-  const { values: flags } = parseArgs({
-    args,
-    options: {
-      host: { type: "string", default: "127.0.0.1" },
-      port: { type: "string", default: "11434" },
-    },
+  const flags = parseArgs(args, {
+    string: ["host", "port"],
+    default: { host: "127.0.0.1", port: "11434" },
   });
-  const hostname = flags.host as string;
+  const hostname = flags.host;
   const port = Number(flags.port);
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
     throw new Error(`Invalid port "${flags.port}"`);

@@ -80,6 +80,42 @@ Deno.test("cli run one-shot prints the streamed response", async () => {
   }
 });
 
+Deno.test("cli run one-shot exits non-zero when the backend errors", async () => {
+  const { home, modelName } = await makeFixture();
+  try {
+    // A backend that becomes healthy but fails every chat request.
+    const failing = join(home, "failing_llama_server.ts");
+    await Deno.writeTextFile(
+      failing,
+      `const i = Deno.args.indexOf("--port");
+const port = Number(Deno.args[i + 1]);
+Deno.serve({ hostname: "127.0.0.1", port }, (req) =>
+  new URL(req.url).pathname === "/health"
+    ? new Response('{"status":"ok"}')
+    : new Response("boom", { status: 500 }));
+`,
+    );
+    const wrapper = join(home, "failing-llama-server.sh");
+    await Deno.writeTextFile(
+      wrapper,
+      `#!/bin/sh\nexec "${Deno.execPath()}" run -A "${failing}" "$@"\n`,
+    );
+    await Deno.chmod(wrapper, 0o755);
+
+    const out = await new Deno.Command(Deno.execPath(), {
+      args: ["run", "-A", join(projectRoot, "src", "cli.ts"), "run", modelName, "hi there"],
+      env: { FREELLAMA_HOME: home, FREELLAMA_LLAMA_SERVER: wrapper },
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    const stderr = new TextDecoder().decode(out.stderr);
+    assert(out.code !== 0, "run must exit non-zero when the chat request fails");
+    assert(stderr.includes("Error:"), `stderr must report the failure, was: ${stderr}`);
+  } finally {
+    await Deno.remove(home, { recursive: true });
+  }
+});
+
 Deno.test("serve proxies /v1/models and /v1/chat/completions (json + sse)", async () => {
   const { home, wrapper, modelName } = await makeFixture();
   const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });

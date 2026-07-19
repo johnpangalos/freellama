@@ -28,10 +28,15 @@ export async function runCommand(args: string[]): Promise<void> {
   const handle = await startLlamaServer({ serverBin, modelPath: model.entry.file });
 
   let stopping = false;
-  const stop = async (code: number) => {
+  const stopServer = async () => {
     if (stopping) return;
     stopping = true;
     await handle.stop();
+  };
+  // Explicit exit: the SIGINT listener and the stdin reader keep the event
+  // loop alive, so the process would hang if we just returned.
+  const stop = async (code: number) => {
+    await stopServer();
     Deno.exit(code);
   };
 
@@ -85,10 +90,15 @@ export async function runCommand(args: string[]): Promise<void> {
       }
       history.push({ role: "assistant", content: result.content });
     }
+  } catch (err) {
+    // Stop the backend but rethrow so cli.ts reports the error and exits
+    // non-zero — a `stop(0)` here would swallow the failure.
+    await stopServer();
+    throw err;
   } finally {
     abort = undefined;
-    await stop(0);
   }
+  await stop(0);
 }
 
 async function chatTurn(

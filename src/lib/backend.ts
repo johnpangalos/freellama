@@ -29,11 +29,14 @@ function githubHeaders(): HeadersInit {
   return headers;
 }
 
-const GPU_TOKENS = ["cuda", "vulkan", "hip", "rocm", "sycl", "kompute", "opencl"];
+const GPU_TOKENS = ["cuda", "vulkan", "hip", "rocm", "sycl", "kompute", "opencl", "openvino"];
+
+// llama.cpp ships Windows builds as .zip and macOS/Linux builds as .tar.gz.
+const ARCHIVE_RE = /\.(zip|tar\.gz|tgz)$/i;
 
 /**
  * Pick the best CPU/Metal release asset for an OS/arch. Asset names look like
- * "llama-b5900-bin-ubuntu-x64.zip", "llama-b5900-bin-macos-arm64.zip",
+ * "llama-b5900-bin-ubuntu-x64.tar.gz", "llama-b5900-bin-macos-arm64.tar.gz",
  * "llama-b5900-bin-win-cpu-x64.zip". Exported for tests.
  */
 export function pickAsset(
@@ -45,7 +48,7 @@ export function pickAsset(
   const archToken = arch === "aarch64" ? "arm64" : "x64";
   const candidates = assets.filter((a) => {
     const n = a.name.toLowerCase();
-    return n.endsWith(".zip") && n.includes("-bin-") && n.includes(osToken) &&
+    return ARCHIVE_RE.test(n) && n.includes("-bin-") && n.includes(osToken) &&
       n.includes(archToken);
   });
   const score = (a: ReleaseAsset): number => {
@@ -53,6 +56,8 @@ export function pickAsset(
     let s = 0;
     if (n.includes("cpu")) s += 2;
     for (const gpu of GPU_TOKENS) if (n.includes(gpu)) s -= 5;
+    // Tie-breaker: prefer the plainest build (fewest descriptor segments).
+    s -= n.split("-").length * 0.1;
     return s;
   };
   return candidates.sort((a, b) => score(b) - score(a))[0];
@@ -105,6 +110,42 @@ async function findFile(dir: string, name: string): Promise<string | undefined> 
   return undefined;
 }
 
+async function extractZip(zip: Uint8Array, installDir: string): Promise<void> {
+  const entries = unzipSync(zip);
+  for (const [path, data] of Object.entries(entries)) {
+    if (path.endsWith("/")) continue;
+    const dest = join(installDir, path);
+    await Deno.mkdir(dirname(dest), { recursive: true });
+    await Deno.writeFile(dest, data);
+    if (Deno.build.os !== "windows") {
+      // fflate does not surface zip permission bits; mark everything executable.
+      await Deno.chmod(dest, 0o755);
+    }
+  }
+}
+
+// macOS/Linux release builds are .tar.gz. Unpack via the system `tar`, which
+// every macOS and Linux host provides and which preserves the archive's
+// executable bits (fflate cannot untar, and the zip path drops permissions).
+async function extractTarGz(archive: Uint8Array, installDir: string): Promise<void> {
+  const tmp = await Deno.makeTempFile({ suffix: ".tar.gz" });
+  try {
+    await Deno.writeFile(tmp, archive);
+    const { code, stderr } = await new Deno.Command("tar", {
+      args: ["-xzf", tmp, "-C", installDir],
+      stdout: "null",
+      stderr: "piped",
+    }).output();
+    if (code !== 0) {
+      throw new Error(
+        `tar failed to extract llama.cpp archive: ${new TextDecoder().decode(stderr)}`,
+      );
+    }
+  } finally {
+    await Deno.remove(tmp).catch(() => {});
+  }
+}
+
 /**
  * Ensure a llama-server binary is available locally, downloading the pinned
  * (or latest) llama.cpp release if needed. Returns the absolute binary path.
@@ -153,23 +194,18 @@ export async function ensureLlamaServer(): Promise<string> {
   }
   progress();
 
-  const zip = new Uint8Array(received);
+  const archive = new Uint8Array(received);
   let offset = 0;
   for (const chunk of chunks) {
-    zip.set(chunk, offset);
+    archive.set(chunk, offset);
     offset += chunk.byteLength;
   }
 
-  const entries = unzipSync(zip);
-  for (const [path, data] of Object.entries(entries)) {
-    if (path.endsWith("/")) continue;
-    const dest = join(installDir, path);
-    await Deno.mkdir(dirname(dest), { recursive: true });
-    await Deno.writeFile(dest, data);
-    if (Deno.build.os !== "windows") {
-      // fflate does not surface zip permission bits; mark everything executable.
-      await Deno.chmod(dest, 0o755);
-    }
+  await Deno.mkdir(installDir, { recursive: true });
+  if (/\.(tar\.gz|tgz)$/i.test(asset.name)) {
+    await extractTarGz(archive, installDir);
+  } else {
+    await extractZip(archive, installDir);
   }
 
   const server = await findFile(installDir, exe);

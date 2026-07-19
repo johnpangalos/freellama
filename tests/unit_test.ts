@@ -49,26 +49,39 @@ Deno.test("refToName round-trips", () => {
   assertEquals(refToName(parseHfRef("a/b/f.gguf")), "a/b/f.gguf");
 });
 
+// Current llama.cpp releases ship macOS/Linux builds as .tar.gz and Windows as .zip.
 const assets = [
-  "llama-b5900-bin-macos-arm64.zip",
-  "llama-b5900-bin-macos-x64.zip",
-  "llama-b5900-bin-ubuntu-x64.zip",
-  "llama-b5900-bin-ubuntu-vulkan-x64.zip",
-  "llama-b5900-bin-win-cpu-x64.zip",
-  "llama-b5900-bin-win-cuda-12.4-x64.zip",
-  "llama-b5900-xcframework.zip",
+  "llama-b10068-bin-macos-arm64.tar.gz",
+  "llama-b10068-bin-macos-x64.tar.gz",
+  "llama-b10068-bin-ubuntu-arm64.tar.gz",
+  "llama-b10068-bin-ubuntu-x64.tar.gz",
+  "llama-b10068-bin-ubuntu-vulkan-x64.tar.gz",
+  "llama-b10068-bin-ubuntu-openvino-2026.2.1-x64.tar.gz",
+  "llama-b10068-bin-ubuntu-rocm-7.2-x64.tar.gz",
+  "llama-b10068-bin-win-cpu-x64.zip",
+  "llama-b10068-bin-win-cuda-12.4-x64.zip",
+  "llama-b10068-xcframework.zip",
 ].map((name) => ({ name, browser_download_url: `https://example.com/${name}`, size: 1 }));
 
-Deno.test("pickAsset: linux x64 prefers plain ubuntu build over vulkan", () => {
-  assertEquals(pickAsset(assets, "linux", "x86_64")?.name, "llama-b5900-bin-ubuntu-x64.zip");
+Deno.test("pickAsset: linux x64 prefers plain ubuntu build over accelerators", () => {
+  assertEquals(pickAsset(assets, "linux", "x86_64")?.name, "llama-b10068-bin-ubuntu-x64.tar.gz");
 });
 
 Deno.test("pickAsset: macos arm64", () => {
-  assertEquals(pickAsset(assets, "darwin", "aarch64")?.name, "llama-b5900-bin-macos-arm64.zip");
+  assertEquals(pickAsset(assets, "darwin", "aarch64")?.name, "llama-b10068-bin-macos-arm64.tar.gz");
 });
 
 Deno.test("pickAsset: windows prefers cpu build over cuda", () => {
-  assertEquals(pickAsset(assets, "windows", "x86_64")?.name, "llama-b5900-bin-win-cpu-x64.zip");
+  assertEquals(pickAsset(assets, "windows", "x86_64")?.name, "llama-b10068-bin-win-cpu-x64.zip");
+});
+
+Deno.test("pickAsset: legacy .zip macOS assets still match", () => {
+  const legacy = [{
+    name: "llama-b5900-bin-macos-arm64.zip",
+    browser_download_url: "https://example.com/x.zip",
+    size: 1,
+  }];
+  assertEquals(pickAsset(legacy, "darwin", "aarch64")?.name, "llama-b5900-bin-macos-arm64.zip");
 });
 
 Deno.test("formatBytes", () => {

@@ -17,7 +17,5 @@ centralized in `tasks.ts`.
 - PRs are squash-merged using the PR title as the commit message, and Release Please builds
   `CHANGELOG.md` from those titles — write titles that read well as user-facing changelog entries
   (CI rejects non-conventional titles).
-- PR bodies follow `.github/PULL_REQUEST_TEMPLATE.md`. `gh pr create` does not apply templates
-  automatically — read the file and fill in its sections.
 - Never edit `CHANGELOG.md`, `version.txt`, or the `VERSION` constant in `src/cli.ts` by hand;
   Release Please maintains them.

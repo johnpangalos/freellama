@@ -1,23 +1,9 @@
-import { join } from "node:path";
+import { assertEquals, assertRejects, assertThrows } from "@std/assert";
+import { join } from "@std/path";
 import { zipSync } from "fflate";
 import { parseHfRef, refToName } from "../src/lib/hf.ts";
 import { extractZip, pickAsset } from "../src/lib/backend.ts";
-import { formatBytes, LineStream } from "../src/lib/util.ts";
-
-function assertEquals<T>(actual: T, expected: T, msg?: string) {
-  const a = JSON.stringify(actual);
-  const e = JSON.stringify(expected);
-  if (a !== e) throw new Error(msg ?? `expected ${e}, got ${a}`);
-}
-
-function assertThrows(fn: () => unknown) {
-  try {
-    fn();
-  } catch {
-    return;
-  }
-  throw new Error("expected function to throw");
-}
+import { formatBytes } from "../src/lib/util.ts";
 
 Deno.test("parseHfRef: repo with quant", () => {
   assertEquals(parseHfRef("hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M"), {
@@ -102,20 +88,13 @@ Deno.test("extractZip rejects entries that escape the install dir (zip-slip)", a
   const dir = await Deno.makeTempDir({ prefix: "freellama-zip-" });
   try {
     const evil = zipSync({ "../evil.txt": new TextEncoder().encode("boom") });
-    let threw = false;
-    try {
-      await extractZip(evil, dir);
-    } catch {
-      threw = true;
-    }
-    if (!threw) throw new Error("expected extractZip to reject ../ entry");
-    let escaped = true;
-    try {
-      await Deno.stat(join(dir, "..", "evil.txt"));
-    } catch {
-      escaped = false;
-    }
-    if (escaped) throw new Error("zip-slip file was written outside the install dir");
+    await assertRejects(() => extractZip(evil, dir), Error, "escapes");
+    await assertRejects(
+      () => Deno.stat(join(dir, "..", "evil.txt")),
+      Deno.errors.NotFound,
+      undefined,
+      "zip-slip file was written outside the install dir",
+    );
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -124,11 +103,4 @@ Deno.test("extractZip rejects entries that escape the install dir (zip-slip)", a
 Deno.test("formatBytes", () => {
   assertEquals(formatBytes(500), "500 B");
   assertEquals(formatBytes(398_000_000), "398 MB");
-});
-
-Deno.test("LineStream splits lines and handles CRLF + trailing remainder", async () => {
-  const input = ReadableStream.from(["a\r\nb", "b\nlast"]);
-  const lines: string[] = [];
-  for await (const line of input.pipeThrough(new LineStream())) lines.push(line);
-  assertEquals(lines, ["a", "bb", "last"]);
 });

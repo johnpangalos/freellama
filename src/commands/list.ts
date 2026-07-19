@@ -1,3 +1,4 @@
+import { exists } from "@std/fs";
 import { formatBytes, status } from "../lib/util.ts";
 import { listModels } from "../lib/store.ts";
 
@@ -10,12 +11,7 @@ export async function listCommand(_args: string[]): Promise<void> {
   }
 
   const rows = await Promise.all(models.map(async ({ name, entry }) => {
-    let size = formatBytes(entry.sizeBytes);
-    try {
-      await Deno.stat(entry.file);
-    } catch {
-      size = "missing!";
-    }
+    const size = await exists(entry.file) ? formatBytes(entry.sizeBytes) : "missing!";
     return { name, size, modified: entry.pulledAt.slice(0, 16).replace("T", " ") };
   }));
 

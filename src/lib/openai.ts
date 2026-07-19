@@ -1,6 +1,6 @@
 // Minimal OpenAI-style chat client used by the `run` REPL to talk to llama-server.
 
-import { LineStream } from "./util.ts";
+import { TextLineStream } from "@std/streams";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -38,7 +38,7 @@ export async function streamChat(
   let finishReason: string | undefined;
   const lines = resp.body
     .pipeThrough(new TextDecoderStream())
-    .pipeThrough(new LineStream());
+    .pipeThrough(new TextLineStream());
   try {
     for await (const line of lines) {
       if (!line.startsWith("data: ")) continue;

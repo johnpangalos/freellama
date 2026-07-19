@@ -4,7 +4,7 @@
 //   hf:user/repo/path/file.gguf — exact file within the repo
 //   hf:user/repo                — error listing the available quants
 
-import { basename, join } from "node:path";
+import { basename, join } from "@std/path";
 import { formatBytes } from "./util.ts";
 import { modelsDir, normalizeName, toUri } from "./store.ts";
 

@@ -1,4 +1,5 @@
-import { LineStream, status } from "../lib/util.ts";
+import { TextLineStream } from "@std/streams";
+import { status } from "../lib/util.ts";
 import { getModel } from "../lib/store.ts";
 import { ensureLlamaServer } from "../lib/backend.ts";
 import { type LlamaServerHandle, startLlamaServer } from "../lib/runner.ts";
@@ -61,7 +62,7 @@ export async function runCommand(args: string[]): Promise<void> {
     const history: ChatMessage[] = [];
     const lines = Deno.stdin.readable
       .pipeThrough(new TextDecoderStream())
-      .pipeThrough(new LineStream())[Symbol.asyncIterator]();
+      .pipeThrough(new TextLineStream())[Symbol.asyncIterator]();
 
     while (true) {
       if (interactive) print(">>> ");

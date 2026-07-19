@@ -2,16 +2,13 @@
 // exercises the runner lifecycle, the streaming client, the `run` one-shot path,
 // and the `serve` proxy — everything except real inference.
 
-import { join } from "node:path";
+import { assert } from "@std/assert";
 import { poll } from "@std/async";
+import { fromFileUrl, join } from "@std/path";
 import { startLlamaServer } from "../src/lib/runner.ts";
 import { streamChat } from "../src/lib/openai.ts";
 
-const projectRoot = new URL("..", import.meta.url).pathname;
-
-function assert(cond: unknown, msg: string): asserts cond {
-  if (!cond) throw new Error(msg);
-}
+const projectRoot = fromFileUrl(new URL("..", import.meta.url));
 
 async function makeFixture(): Promise<{ home: string; wrapper: string; modelName: string }> {
   const home = await Deno.makeTempDir({ prefix: "freellama-test-" });

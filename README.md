@@ -30,19 +30,12 @@ deno task install   # install `freellama` on your PATH (deno install)
 deno task compile   # or build a standalone binary: ./freellama
 ```
 
-Cross-compile a binary for another platform with Deno's `--target`, e.g.:
-
-```bash
-deno compile --target x86_64-unknown-linux-gnu \
-  --allow-read --allow-write --allow-net --allow-run \
-  --allow-env=FREELLAMA_HOME,FREELLAMA_CTX,HF_TOKEN,HOME,USERPROFILE \
-  --output freellama-linux src/cli.ts
-```
-
-freellama runs under scoped Deno permissions rather than `--allow-all`: `--allow-env` is limited to
-the variables it reads, and it requests no `--allow-ffi` or `--allow-sys`. Network, subprocess, and
-disk access stay open because model downloads redirect through Hugging Face / GitHub CDNs and the
-`llama-server` binary path is resolved at runtime.
+Both tasks build with scoped Deno permissions rather than `--allow-all`: `--allow-env` is limited to
+the variables freellama reads, and it requests no `--allow-ffi` or `--allow-sys`. Network,
+subprocess, and disk access stay open because model downloads redirect through Hugging Face / GitHub
+CDNs and the `llama-server` binary path is resolved at runtime. The flag set is defined once in
+[`tasks.ts`](tasks.ts); add Deno's `--target` there (or on a one-off `deno compile`) to
+cross-compile for another platform.
 
 ## Commands
 

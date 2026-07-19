@@ -9,8 +9,11 @@ import { listCommand } from "./commands/list.ts";
 import { rmCommand } from "./commands/rm.ts";
 import { runCommand } from "./commands/run.ts";
 import { serveCommand } from "./commands/serve.ts";
+import manifest from "../.release-please-manifest.json" with { type: "json" };
 
-const VERSION = "0.1.0"; // x-release-please-version
+// The Release Please manifest is the version's source of truth; the JSON
+// import is part of the module graph, so `deno compile` embeds it.
+const VERSION = manifest["."];
 
 const HELP = `freellama ${VERSION} — run LLMs locally, powered by llama.cpp
 

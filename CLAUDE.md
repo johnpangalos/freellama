@@ -20,5 +20,5 @@ Ollama-style CLI + OpenAI-compatible server for running LLMs locally via llama.c
 - PRs are squash-merged using the PR title as the commit message, and Release Please builds
   `CHANGELOG.md` from those titles — write titles that read well as user-facing changelog entries
   (CI rejects non-conventional titles).
-- Never edit `CHANGELOG.md`, `version.txt`, or the `VERSION` constant in `src/cli.ts` by hand;
-  Release Please maintains them.
+- Never edit `CHANGELOG.md`, `version.txt`, or `.release-please-manifest.json` by hand; Release
+  Please maintains them. The manifest is the version's source of truth — `src/cli.ts` imports it.

@@ -57,6 +57,7 @@ export async function startLlamaServer(opts: StartOptions): Promise<LlamaServerH
 
   const baseUrl = `http://127.0.0.1:${port}`;
   const deadline = Date.now() + READY_TIMEOUT_MS;
+  let ready = false;
   while (Date.now() < deadline) {
     if (exited) {
       const status = await exitInfo;
@@ -68,13 +69,16 @@ export async function startLlamaServer(opts: StartOptions): Promise<LlamaServerH
     try {
       const resp = await fetch(`${baseUrl}/health`);
       await resp.body?.cancel();
-      if (resp.ok) break;
+      if (resp.ok) {
+        ready = true;
+        break;
+      }
     } catch {
       // Not listening yet.
     }
     await new Promise((r) => setTimeout(r, 300));
   }
-  if (Date.now() >= deadline) {
+  if (!ready) {
     proc.kill("SIGKILL");
     throw new Error(`llama-server did not become ready within ${READY_TIMEOUT_MS / 1000}s`);
   }

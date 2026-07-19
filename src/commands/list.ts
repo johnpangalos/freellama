@@ -1,12 +1,11 @@
-import { formatBytes } from "../lib/util.ts";
+import { formatBytes, status } from "../lib/util.ts";
 import { listModels } from "../lib/store.ts";
 
 export async function listCommand(_args: string[]): Promise<void> {
   const models = await listModels();
   if (models.length === 0) {
-    console.log(
-      "No models installed. Try: freellama pull hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M",
-    );
+    // Advice, not data: keep stdout empty so `freellama list | wc -l` etc. stay honest.
+    status("No models installed. Try: freellama pull hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M");
     return;
   }
 

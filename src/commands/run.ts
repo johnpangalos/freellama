@@ -1,4 +1,4 @@
-import { LineStream } from "../lib/util.ts";
+import { LineStream, status } from "../lib/util.ts";
 import { getModel } from "../lib/store.ts";
 import { ensureLlamaServer } from "../lib/backend.ts";
 import { type LlamaServerHandle, startLlamaServer } from "../lib/runner.ts";
@@ -18,12 +18,12 @@ export async function runCommand(args: string[]): Promise<void> {
 
   let model = await getModel(reference);
   if (!model) {
-    console.error(`model not found locally, pulling ${reference}...`);
+    status(`model not found locally, pulling ${reference}...`);
     model = await pullModel(reference);
   }
 
   const serverBin = await ensureLlamaServer();
-  console.error(`loading ${model.name}...`);
+  status(`loading ${model.name}...`);
   const handle = await startLlamaServer({ serverBin, modelPath: model.entry.file });
 
   let stopping = false;
@@ -56,7 +56,7 @@ export async function runCommand(args: string[]): Promise<void> {
     // runs clean so stdout is just the model's replies.
     const interactive = Deno.stdin.isTerminal();
     if (interactive) {
-      console.error(`\n${model.name} ready. Type a message, /clear to reset, /bye to exit.\n`);
+      status(`\n${model.name} ready. Type a message, /clear to reset, /bye to exit.\n`);
     }
     const history: ChatMessage[] = [];
     const lines = Deno.stdin.readable
@@ -72,7 +72,7 @@ export async function runCommand(args: string[]): Promise<void> {
       if (input === "/bye" || input === "/exit") break;
       if (input === "/clear") {
         history.length = 0;
-        console.error("(history cleared)");
+        status("(history cleared)");
         continue;
       }
 
@@ -80,7 +80,7 @@ export async function runCommand(args: string[]): Promise<void> {
       const result = await chatTurn(handle, model.name, history, (c) => abort = c);
       print("\n\n");
       if (result.finishReason === "abort") {
-        console.error("(generation interrupted)");
+        status("(generation interrupted)");
       }
       history.push({ role: "assistant", content: result.content });
     }

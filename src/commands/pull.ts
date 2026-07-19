@@ -1,4 +1,4 @@
-import { formatBytes } from "../lib/util.ts";
+import { formatBytes, status } from "../lib/util.ts";
 import { downloadGguf, parseHfRef, progressPrinter, resolveGguf } from "../lib/hf.ts";
 import { addModel, getModel, type ModelEntry } from "../lib/store.ts";
 import { ensureLlamaServer } from "../lib/backend.ts";
@@ -40,7 +40,7 @@ export async function pullCommand(args: string[]): Promise<void> {
   const { name, entry } = await pullModel(reference);
   console.log(`pulled ${name} (${formatBytes(entry.sizeBytes)})`);
 
-  console.error("ensuring llama.cpp backend is installed...");
+  status("ensuring llama.cpp backend is installed...");
   await ensureLlamaServer();
-  console.error("backend ready");
+  status("backend ready");
 }

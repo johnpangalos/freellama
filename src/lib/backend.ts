@@ -4,7 +4,7 @@
 // freellama runs inference exclusively through llama.cpp (MIT licensed,
 // (c) The ggml authors) — see THIRD_PARTY_NOTICES.md.
 
-import { dirname, join } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import { unzipSync } from "fflate";
 import { binDir } from "./store.ts";
 import { progressPrinter } from "./hf.ts";
@@ -110,11 +110,17 @@ async function findFile(dir: string, name: string): Promise<string | undefined> 
   return undefined;
 }
 
-async function extractZip(zip: Uint8Array, installDir: string): Promise<void> {
+/** Exported for tests. */
+export async function extractZip(zip: Uint8Array, installDir: string): Promise<void> {
   const entries = unzipSync(zip);
+  const root = resolve(installDir);
   for (const [path, data] of Object.entries(entries)) {
     if (path.endsWith("/")) continue;
-    const dest = join(installDir, path);
+    const dest = resolve(installDir, path);
+    // Zip-slip guard: entry paths come from the archive; never write outside installDir.
+    if (dest !== root && !dest.startsWith(root + sep)) {
+      throw new Error(`Refusing to extract "${path}": escapes ${installDir}`);
+    }
     await Deno.mkdir(dirname(dest), { recursive: true });
     await Deno.writeFile(dest, data);
     if (Deno.build.os !== "windows") {

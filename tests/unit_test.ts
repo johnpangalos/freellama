@@ -1,5 +1,7 @@
+import { join } from "node:path";
+import { zipSync } from "fflate";
 import { parseHfRef, refToName } from "../src/lib/hf.ts";
-import { pickAsset } from "../src/lib/backend.ts";
+import { extractZip, pickAsset } from "../src/lib/backend.ts";
 import { formatBytes, LineStream } from "../src/lib/util.ts";
 
 function assertEquals<T>(actual: T, expected: T, msg?: string) {
@@ -82,6 +84,41 @@ Deno.test("pickAsset: legacy .zip macOS assets still match", () => {
     size: 1,
   }];
   assertEquals(pickAsset(legacy, "darwin", "aarch64")?.name, "llama-b5900-bin-macos-arm64.zip");
+});
+
+Deno.test("extractZip writes entries into the install dir", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "freellama-zip-" });
+  try {
+    const zip = zipSync({ "build/bin/llama-server": new TextEncoder().encode("fake") });
+    await extractZip(zip, dir);
+    const written = await Deno.readTextFile(join(dir, "build", "bin", "llama-server"));
+    assertEquals(written, "fake");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("extractZip rejects entries that escape the install dir (zip-slip)", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "freellama-zip-" });
+  try {
+    const evil = zipSync({ "../evil.txt": new TextEncoder().encode("boom") });
+    let threw = false;
+    try {
+      await extractZip(evil, dir);
+    } catch {
+      threw = true;
+    }
+    if (!threw) throw new Error("expected extractZip to reject ../ entry");
+    let escaped = true;
+    try {
+      await Deno.stat(join(dir, "..", "evil.txt"));
+    } catch {
+      escaped = false;
+    }
+    if (escaped) throw new Error("zip-slip file was written outside the install dir");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
 });
 
 Deno.test("formatBytes", () => {

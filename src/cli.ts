@@ -57,8 +57,9 @@ async function main() {
     case "-h":
       return console.log(HELP);
     default:
+      // Error path: help is diagnostic output here, keep stdout clean for pipes.
       console.error(`Unknown command: ${command}\n`);
-      console.log(HELP);
+      console.error(HELP);
       Deno.exit(1);
   }
 }

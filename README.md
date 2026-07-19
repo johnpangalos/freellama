@@ -72,7 +72,12 @@ curl http://127.0.0.1:11434/v1/chat/completions \
 
 Streaming works via `"stream": true` (server-sent events, terminated by `data: [DONE]`). Requests
 are proxied to a `llama-server` subprocess that is started lazily for the requested model;
-requesting a different model swaps the loaded one.
+requesting a different model swaps the loaded one (in-flight responses are drained first, up to 30
+s).
+
+The server has no authentication. It binds `127.0.0.1` by default; if you pass `--host 0.0.0.0` (or
+any non-loopback address), anyone who can reach the port can run inference on your machine — put it
+behind a reverse proxy or firewall first.
 
 ```python
 from openai import OpenAI

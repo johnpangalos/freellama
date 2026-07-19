@@ -20,7 +20,9 @@ const [task, ...rest] = Deno.args;
 const tasks: Record<string, string[]> = {
   // dev forwards trailing args, e.g. `deno task dev run <model>`.
   dev: ["run", ...PERMS, "src/cli.ts", ...rest],
-  compile: ["compile", ...PERMS, "--output", "freellama", "src/cli.ts"],
+  // compile forwards trailing args (e.g. `--target`, `--output` for release
+  // cross-builds); with no args it defaults to `--output freellama`.
+  compile: ["compile", ...PERMS, ...(rest.length ? rest : ["--output", "freellama"]), "src/cli.ts"],
   install: ["install", "--global", "--force", "--name", "freellama", ...PERMS, "src/cli.ts"],
 };
 

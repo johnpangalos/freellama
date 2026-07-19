@@ -9,7 +9,7 @@ import { rmCommand } from "./commands/rm.ts";
 import { runCommand } from "./commands/run.ts";
 import { serveCommand } from "./commands/serve.ts";
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.0"; // x-release-please-version
 
 const HELP = `freellama ${VERSION} — run LLMs locally, powered by llama.cpp
 

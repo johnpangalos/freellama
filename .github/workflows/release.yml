@@ -1,0 +1,59 @@
+# Release Please keeps an open release PR that accumulates CHANGELOG.md and the
+# version bump from Conventional Commit messages on main. Merging that PR
+# creates the tag and GitHub Release, and the binaries job below attaches
+# cross-compiled builds to it. The binaries job chains off outputs (rather than
+# an `on: push: tags` trigger) because tags created with the workflow's own
+# GITHUB_TOKEN never trigger other workflows.
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: rp
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  binaries:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno task check
+      - run: deno task test
+      - name: Compile release binaries
+        run: |
+          targets='x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-apple-darwin aarch64-apple-darwin x86_64-pc-windows-msvc'
+          for target in $targets; do
+            deno task compile --target "$target" --output "dist/$target/freellama"
+            if [ -e "dist/$target/freellama.exe" ]; then
+              (cd "dist/$target" && zip -q "../freellama-$target.zip" freellama.exe)
+            else
+              tar -czf "dist/freellama-$target.tar.gz" -C "dist/$target" freellama
+            fi
+          done
+      - name: Upload binaries to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ needs.release-please.outputs.tag_name }}" dist/freellama-*.tar.gz dist/freellama-*.zip

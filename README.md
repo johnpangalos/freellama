@@ -33,9 +33,10 @@ deno task compile   # or build a standalone binary: ./freellama
 Both tasks build with scoped Deno permissions rather than `--allow-all`: `--allow-env` is limited to
 the variables freellama reads, and it requests no `--allow-ffi` or `--allow-sys`. Network,
 subprocess, and disk access stay open because model downloads redirect through Hugging Face / GitHub
-CDNs and the `llama-server` binary path is resolved at runtime. The flag set is defined once in
-[`tasks.ts`](tasks.ts); add Deno's `--target` there (or on a one-off `deno compile`) to
-cross-compile for another platform.
+CDNs and the `llama-server` binary path is resolved at runtime. The flag set is defined once, in the
+[`src/cli.ts`](src/cli.ts) shebang; [`tasks.ts`](tasks.ts) parses it, so running the script directly
+behaves exactly like the compiled or installed binary. Add Deno's `--target` in tasks.ts (or on a
+one-off `deno compile`) to cross-compile for another platform.
 
 ## Commands
 

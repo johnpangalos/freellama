@@ -19,7 +19,8 @@
     "fflate": "npm:fflate@^0.8"
   },
   "fmt": {
-    "lineWidth": 100
+    "lineWidth": 100,
+    "exclude": ["CHANGELOG.md"]
   },
   "exclude": ["freellama"]
 }

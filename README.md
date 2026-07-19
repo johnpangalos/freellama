@@ -26,6 +26,20 @@ deno task dev run Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M "Say hello in five word
 ## Install
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/johnpangalos/freellama/main/install.sh | sh
+```
+
+Downloads the prebuilt binary for your platform (Linux/macOS, x64/arm64) from the
+[latest release](https://github.com/johnpangalos/freellama/releases/latest) into `~/.local/bin`. Set
+`FREELLAMA_INSTALL` to change the directory, or `FREELLAMA_VERSION` to pin a release. On Windows,
+download `freellama-x86_64-pc-windows-msvc.zip` from the
+[releases page](https://github.com/johnpangalos/freellama/releases).
+
+### From source
+
+Requires [Deno](https://docs.deno.com/runtime/getting_started/installation/) 2.x.
+
+```bash
 deno task install   # install `freellama` on your PATH (deno install)
 deno task compile   # or build a standalone binary: ./freellama
 ```

@@ -1,6 +1,7 @@
 // OpenAI-compatible front server. Chat requests are reverse-proxied to a
 // llama-server subprocess that is lazily started for the requested model.
 
+import { poll } from "@std/async";
 import { parseArgs } from "@std/cli/parse-args";
 import { status } from "../lib/util.ts";
 import { getModel, listModels } from "../lib/store.ts";
@@ -19,11 +20,12 @@ interface Backend {
 const DRAIN_TIMEOUT_MS = 30_000;
 
 async function drain(backend: Backend): Promise<void> {
-  const deadline = Date.now() + DRAIN_TIMEOUT_MS;
-  while (backend.inflight > 0 && Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  if (backend.inflight > 0) {
+  try {
+    await poll(() => backend.inflight, (n) => n === 0, {
+      interval: 100,
+      signal: AbortSignal.timeout(DRAIN_TIMEOUT_MS),
+    });
+  } catch {
     status(
       `swap: ${backend.inflight} request(s) still active after drain timeout, stopping anyway`,
     );

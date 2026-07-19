@@ -9,6 +9,7 @@
     "install": "deno run --allow-run=deno tasks.ts install"
   },
   "imports": {
+    "@std/async": "jsr:@std/async@^1",
     "@std/cli": "jsr:@std/cli@^1",
     "@std/fmt": "jsr:@std/fmt@^1",
     "fflate": "npm:fflate@^0.8"

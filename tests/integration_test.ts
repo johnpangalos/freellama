@@ -3,6 +3,7 @@
 // and the `serve` proxy — everything except real inference.
 
 import { join } from "node:path";
+import { poll } from "@std/async";
 import { startLlamaServer } from "../src/lib/runner.ts";
 import { streamChat } from "../src/lib/openai.ts";
 
@@ -98,16 +99,19 @@ Deno.test("serve proxies /v1/models and /v1/chat/completions (json + sse)", asyn
   const base = `http://127.0.0.1:${port}`;
   try {
     // Wait for the front server.
-    const deadline = Date.now() + 20_000;
-    while (true) {
-      try {
-        const r = await fetch(`${base}/health`);
-        await r.body?.cancel();
-        if (r.ok) break;
-      } catch { /* not up yet */ }
-      assert(Date.now() < deadline, "serve did not come up in time");
-      await new Promise((r) => setTimeout(r, 200));
-    }
+    await poll(
+      async () => {
+        try {
+          const r = await fetch(`${base}/health`);
+          await r.body?.cancel();
+          return r.ok;
+        } catch {
+          return false; // Not up yet.
+        }
+      },
+      (up) => up,
+      { interval: 200, signal: AbortSignal.timeout(20_000) },
+    );
 
     const models = await (await fetch(`${base}/v1/models`)).json();
     assert(models.data?.[0]?.id === modelName, `models response: ${JSON.stringify(models)}`);

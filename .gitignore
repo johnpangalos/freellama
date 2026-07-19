@@ -1,0 +1,4 @@
+/freellama
+/freellama.exe
+.freellama/
+deno.lock

@@ -1,0 +1,17 @@
+{
+  "tasks": {
+    "dev": "deno run -A src/cli.ts",
+    "check": "deno check src/cli.ts && deno lint && deno fmt --check",
+    "test": "deno test -A",
+    "fmt": "deno fmt",
+    "lint": "deno lint",
+    "compile": "deno compile -A --output freellama src/cli.ts"
+  },
+  "imports": {
+    "fflate": "npm:fflate@^0.8"
+  },
+  "fmt": {
+    "lineWidth": 100
+  },
+  "exclude": ["freellama"]
+}

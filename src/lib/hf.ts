@@ -4,7 +4,7 @@
 //   hf:user/repo/path/file.gguf — exact file within the repo
 //   hf:user/repo                — error listing the available quants
 
-import { basename, join } from "node:path";
+import { basename, join } from "@std/path";
 import { formatBytes } from "./util.ts";
 import { modelsDir, normalizeName, toUri } from "./store.ts";
 
@@ -98,7 +98,6 @@ export async function resolveGguf(
     // Prefer exact "-QUANT.gguf" suffix matches over loose substring hits.
     chosen = matches.find((f) => basename(f.path).toLowerCase().endsWith(`-${quant}.gguf`)) ??
       matches[0];
-    if (matches.length > 1 && !chosen) chosen = matches[0];
   } else {
     throw new Error(
       `Specify a quant or file for ${ref.repo}. Available:\n${ggufList(ggufs)}\n` +
@@ -173,6 +172,15 @@ export async function downloadGguf(
   });
   const file = await Deno.open(tmp, { write: true, create: true, truncate: true });
   await resp.body.pipeThrough(counter).pipeTo(file.writable);
+  // A cleanly-closed-but-truncated response must not be recorded as a valid model.
+  if (expectedSize > 0 && received !== expectedSize) {
+    await Deno.remove(tmp).catch(() => {});
+    throw new Error(
+      `Download of ${remotePath} incomplete: got ${formatBytes(received)}, expected ${
+        formatBytes(expectedSize)
+      }. Try again.`,
+    );
+  }
   await Deno.rename(tmp, dest);
   return dest;
 }
@@ -180,19 +188,29 @@ export async function downloadGguf(
 /** Render a one-line progress bar to stderr; call with undefined to finish the line. */
 export function progressPrinter(label: string): (p?: DownloadProgress) => void {
   let lastRender = 0;
+  let last: DownloadProgress | undefined;
   const encoder = new TextEncoder();
-  return (p?: DownloadProgress) => {
-    const now = Date.now();
-    if (p && now - lastRender < 100) return;
-    lastRender = now;
-    if (!p) {
-      Deno.stderr.writeSync(encoder.encode("\n"));
-      return;
-    }
+  const render = (p: DownloadProgress) => {
     const pct = p.total ? ` ${Math.floor((p.received / p.total) * 100)}%` : "";
     const totalStr = p.total ? ` / ${formatBytes(p.total)}` : "";
     Deno.stderr.writeSync(
       encoder.encode(`\r${label}:${pct} ${formatBytes(p.received)}${totalStr}   `),
     );
+  };
+  return (p?: DownloadProgress) => {
+    if (!p) {
+      // Finish: render the final numbers unthrottled (so the line ends at 100%,
+      // not wherever the throttle left it), then end the line. If nothing was
+      // ever reported (download skipped), print nothing.
+      if (!last) return;
+      render(last);
+      Deno.stderr.writeSync(encoder.encode("\n"));
+      return;
+    }
+    last = p;
+    const now = Date.now();
+    if (now - lastRender < 100) return;
+    lastRender = now;
+    render(p);
   };
 }

@@ -1,15 +1,21 @@
 {
   "tasks": {
-    "dev": "deno run --allow-run=deno tasks.ts dev",
+    "dev": "deno run --allow-run=deno --allow-read=src/cli.ts tasks.ts dev",
     "check": "deno check src/cli.ts tasks.ts && deno lint && deno fmt --check",
     "test": "deno test -A",
     "fmt": "deno fmt",
     "lint": "deno lint",
-    "compile": "deno run --allow-run=deno tasks.ts compile",
-    "install": "deno run --allow-run=deno tasks.ts install"
+    "compile": "deno run --allow-run=deno --allow-read=src/cli.ts tasks.ts compile",
+    "install": "deno run --allow-run=deno --allow-read=src/cli.ts tasks.ts install"
   },
   "imports": {
+    "@std/assert": "jsr:@std/assert@^1",
+    "@std/async": "jsr:@std/async@^1",
     "@std/cli": "jsr:@std/cli@^1",
+    "@std/fmt": "jsr:@std/fmt@^1",
+    "@std/fs": "jsr:@std/fs@^1",
+    "@std/path": "jsr:@std/path@^1",
+    "@std/streams": "jsr:@std/streams@^1",
     "fflate": "npm:fflate@^0.8"
   },
   "fmt": {

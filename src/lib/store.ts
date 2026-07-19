@@ -1,6 +1,6 @@
 // Model storage: ~/.freellama/{models,bin,manifest.json}. Override the root with FREELLAMA_HOME.
 
-import { join } from "node:path";
+import { join } from "@std/path";
 
 export interface ModelEntry {
   /** Full source URI, e.g. "hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M". */

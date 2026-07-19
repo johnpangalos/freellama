@@ -47,9 +47,10 @@ deno task compile   # or build a standalone binary: ./freellama
 Both tasks build with scoped Deno permissions rather than `--allow-all`: `--allow-env` is limited to
 the variables freellama reads, and it requests no `--allow-ffi` or `--allow-sys`. Network,
 subprocess, and disk access stay open because model downloads redirect through Hugging Face / GitHub
-CDNs and the `llama-server` binary path is resolved at runtime. The flag set is defined once in
-[`tasks.ts`](tasks.ts); add Deno's `--target` there (or on a one-off `deno compile`) to
-cross-compile for another platform.
+CDNs and the `llama-server` binary path is resolved at runtime. The flag set is defined once, in the
+[`src/cli.ts`](src/cli.ts) shebang; [`tasks.ts`](tasks.ts) parses it, so running the script directly
+behaves exactly like the compiled or installed binary. Add Deno's `--target` in tasks.ts (or on a
+one-off `deno compile`) to cross-compile for another platform.
 
 ## Commands
 
@@ -86,7 +87,12 @@ curl http://127.0.0.1:11434/v1/chat/completions \
 
 Streaming works via `"stream": true` (server-sent events, terminated by `data: [DONE]`). Requests
 are proxied to a `llama-server` subprocess that is started lazily for the requested model;
-requesting a different model swaps the loaded one.
+requesting a different model swaps the loaded one (in-flight responses are drained first, up to 30
+s).
+
+The server has no authentication. It binds `127.0.0.1` by default; if you pass `--host 0.0.0.0` (or
+any non-loopback address), anyone who can reach the port can run inference on your machine — put it
+behind a reverse proxy or firewall first.
 
 ```python
 from openai import OpenAI

@@ -1,3 +1,13 @@
+import { dim } from "@std/fmt/colors";
+
+/**
+ * Print a status/progress line. Status goes to stderr (dimmed on color terminals)
+ * so stdout stays clean data — `freellama run` in a pipeline emits only the reply.
+ */
+export function status(msg: string): void {
+  console.error(dim(msg));
+}
+
 /** Human-readable byte size, e.g. 398 MB. */
 export function formatBytes(n: number): string {
   if (!Number.isFinite(n) || n < 0) return `${n} B`;
@@ -9,24 +19,4 @@ export function formatBytes(n: number): string {
     unit++;
   }
   return `${unit === 0 ? value : value.toFixed(value >= 100 ? 0 : 1)} ${units[unit]}`;
-}
-
-/** Split a text stream into lines (drops trailing \r, emits remainder on close). */
-export class LineStream extends TransformStream<string, string> {
-  constructor() {
-    let buffer = "";
-    super({
-      transform(chunk, controller) {
-        buffer += chunk;
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          controller.enqueue(line.endsWith("\r") ? line.slice(0, -1) : line);
-        }
-      },
-      flush(controller) {
-        if (buffer.length > 0) controller.enqueue(buffer);
-      },
-    });
-  }
 }

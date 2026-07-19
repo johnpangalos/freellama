@@ -1,13 +1,16 @@
 # freellama
 
-Local LLM runner on Deno + llama.cpp. `src/cli.ts` is the entrypoint; runtime permissions are
-centralized in `tasks.ts`.
+Ollama-style CLI + OpenAI-compatible server for running LLMs locally via llama.cpp. Built with Deno
+2.x. See README.md for commands and architecture.
 
-## Commands
+## Guidelines
 
-- `deno task check` — typecheck + lint + fmt check (run before pushing)
-- `deno task test` — full test suite
-- `deno task dev <args>` — run the CLI with scoped permissions
+- Before implementing a utility (polling, path handling, stream splitting, assertions, retries, file
+  walking, ...), check the Deno standard library first: https://jsr.io/@std. Prefer an existing
+  `@std/*` API over hand-rolling; use `deno doc jsr:@std/<name>` to inspect a package's exports.
+  Import via the `@std/*` entries in `deno.json`.
+- Prefer `@std/path` over `node:path`.
+- `deno task check` (type-check + lint + fmt) and `deno task test` must pass before committing.
 
 ## Commits and pull requests
 

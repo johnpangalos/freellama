@@ -1,5 +1,7 @@
 // llama-server subprocess lifecycle: spawn, wait for readiness, stop.
 
+import { deadline, poll } from "@std/async";
+
 export interface LlamaServerHandle {
   port: number;
   baseUrl: string;
@@ -56,27 +58,33 @@ export async function startLlamaServer(opts: StartOptions): Promise<LlamaServerH
   });
 
   const baseUrl = `http://127.0.0.1:${port}`;
-  const deadline = Date.now() + READY_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    if (exited) {
-      const status = await exitInfo;
-      throw new Error(
-        `llama-server exited with code ${status.code} before becoming ready. ` +
-          `Re-run with FREELLAMA_DEBUG=1 to see its output.`,
-      );
+  try {
+    await poll(
+      async () => {
+        if (exited) {
+          const status = await exitInfo;
+          throw new Error(
+            `llama-server exited with code ${status.code} before becoming ready. ` +
+              `Re-run with FREELLAMA_DEBUG=1 to see its output.`,
+          );
+        }
+        try {
+          const resp = await fetch(`${baseUrl}/health`);
+          await resp.body?.cancel();
+          return resp.ok;
+        } catch {
+          return false; // Not listening yet.
+        }
+      },
+      (healthy) => healthy,
+      { interval: 300, signal: AbortSignal.timeout(READY_TIMEOUT_MS) },
+    );
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      proc.kill("SIGKILL");
+      throw new Error(`llama-server did not become ready within ${READY_TIMEOUT_MS / 1000}s`);
     }
-    try {
-      const resp = await fetch(`${baseUrl}/health`);
-      await resp.body?.cancel();
-      if (resp.ok) break;
-    } catch {
-      // Not listening yet.
-    }
-    await new Promise((r) => setTimeout(r, 300));
-  }
-  if (Date.now() >= deadline) {
-    proc.kill("SIGKILL");
-    throw new Error(`llama-server did not become ready within ${READY_TIMEOUT_MS / 1000}s`);
+    throw err;
   }
 
   return {
@@ -90,15 +98,17 @@ export async function startLlamaServer(opts: StartOptions): Promise<LlamaServerH
       } catch {
         return;
       }
-      const killTimer = setTimeout(() => {
+      try {
+        await deadline(proc.status, 5000);
+      } catch {
+        // Didn't exit in time — escalate.
         try {
           proc.kill("SIGKILL");
         } catch {
           // Already gone.
         }
-      }, 5000);
-      await proc.status;
-      clearTimeout(killTimer);
+        await proc.status;
+      }
     },
   };
 }

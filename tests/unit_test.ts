@@ -1,21 +1,9 @@
+import { assertEquals, assertRejects, assertThrows } from "@std/assert";
+import { join } from "@std/path";
+import { zipSync } from "fflate";
 import { parseHfRef, refToName } from "../src/lib/hf.ts";
-import { pickAsset } from "../src/lib/backend.ts";
-import { formatBytes, LineStream } from "../src/lib/util.ts";
-
-function assertEquals<T>(actual: T, expected: T, msg?: string) {
-  const a = JSON.stringify(actual);
-  const e = JSON.stringify(expected);
-  if (a !== e) throw new Error(msg ?? `expected ${e}, got ${a}`);
-}
-
-function assertThrows(fn: () => unknown) {
-  try {
-    fn();
-  } catch {
-    return;
-  }
-  throw new Error("expected function to throw");
-}
+import { extractZip, pickAsset } from "../src/lib/backend.ts";
+import { formatBytes } from "../src/lib/util.ts";
 
 Deno.test("parseHfRef: repo with quant", () => {
   assertEquals(parseHfRef("hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M"), {
@@ -84,14 +72,35 @@ Deno.test("pickAsset: legacy .zip macOS assets still match", () => {
   assertEquals(pickAsset(legacy, "darwin", "aarch64")?.name, "llama-b5900-bin-macos-arm64.zip");
 });
 
+Deno.test("extractZip writes entries into the install dir", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "freellama-zip-" });
+  try {
+    const zip = zipSync({ "build/bin/llama-server": new TextEncoder().encode("fake") });
+    await extractZip(zip, dir);
+    const written = await Deno.readTextFile(join(dir, "build", "bin", "llama-server"));
+    assertEquals(written, "fake");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("extractZip rejects entries that escape the install dir (zip-slip)", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "freellama-zip-" });
+  try {
+    const evil = zipSync({ "../evil.txt": new TextEncoder().encode("boom") });
+    await assertRejects(() => extractZip(evil, dir), Error, "escapes");
+    await assertRejects(
+      () => Deno.stat(join(dir, "..", "evil.txt")),
+      Deno.errors.NotFound,
+      undefined,
+      "zip-slip file was written outside the install dir",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("formatBytes", () => {
   assertEquals(formatBytes(500), "500 B");
   assertEquals(formatBytes(398_000_000), "398 MB");
-});
-
-Deno.test("LineStream splits lines and handles CRLF + trailing remainder", async () => {
-  const input = ReadableStream.from(["a\r\nb", "b\nlast"]);
-  const lines: string[] = [];
-  for await (const line of input.pipeThrough(new LineStream())) lines.push(line);
-  assertEquals(lines, ["a", "bb", "last"]);
 });

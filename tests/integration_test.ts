@@ -2,15 +2,13 @@
 // exercises the runner lifecycle, the streaming client, the `run` one-shot path,
 // and the `serve` proxy — everything except real inference.
 
-import { join } from "node:path";
+import { assert } from "@std/assert";
+import { poll } from "@std/async";
+import { fromFileUrl, join } from "@std/path";
 import { startLlamaServer } from "../src/lib/runner.ts";
 import { streamChat } from "../src/lib/openai.ts";
 
-const projectRoot = new URL("..", import.meta.url).pathname;
-
-function assert(cond: unknown, msg: string): asserts cond {
-  if (!cond) throw new Error(msg);
-}
+const projectRoot = fromFileUrl(new URL("..", import.meta.url));
 
 async function makeFixture(): Promise<{ home: string; wrapper: string; modelName: string }> {
   const home = await Deno.makeTempDir({ prefix: "freellama-test-" });
@@ -82,6 +80,42 @@ Deno.test("cli run one-shot prints the streamed response", async () => {
   }
 });
 
+Deno.test("cli run one-shot exits non-zero when the backend errors", async () => {
+  const { home, modelName } = await makeFixture();
+  try {
+    // A backend that becomes healthy but fails every chat request.
+    const failing = join(home, "failing_llama_server.ts");
+    await Deno.writeTextFile(
+      failing,
+      `const i = Deno.args.indexOf("--port");
+const port = Number(Deno.args[i + 1]);
+Deno.serve({ hostname: "127.0.0.1", port }, (req) =>
+  new URL(req.url).pathname === "/health"
+    ? new Response('{"status":"ok"}')
+    : new Response("boom", { status: 500 }));
+`,
+    );
+    const wrapper = join(home, "failing-llama-server.sh");
+    await Deno.writeTextFile(
+      wrapper,
+      `#!/bin/sh\nexec "${Deno.execPath()}" run -A "${failing}" "$@"\n`,
+    );
+    await Deno.chmod(wrapper, 0o755);
+
+    const out = await new Deno.Command(Deno.execPath(), {
+      args: ["run", "-A", join(projectRoot, "src", "cli.ts"), "run", modelName, "hi there"],
+      env: { FREELLAMA_HOME: home, FREELLAMA_LLAMA_SERVER: wrapper },
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    const stderr = new TextDecoder().decode(out.stderr);
+    assert(out.code !== 0, "run must exit non-zero when the chat request fails");
+    assert(stderr.includes("Error:"), `stderr must report the failure, was: ${stderr}`);
+  } finally {
+    await Deno.remove(home, { recursive: true });
+  }
+});
+
 Deno.test("serve proxies /v1/models and /v1/chat/completions (json + sse)", async () => {
   const { home, wrapper, modelName } = await makeFixture();
   const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });
@@ -98,16 +132,19 @@ Deno.test("serve proxies /v1/models and /v1/chat/completions (json + sse)", asyn
   const base = `http://127.0.0.1:${port}`;
   try {
     // Wait for the front server.
-    const deadline = Date.now() + 20_000;
-    while (true) {
-      try {
-        const r = await fetch(`${base}/health`);
-        await r.body?.cancel();
-        if (r.ok) break;
-      } catch { /* not up yet */ }
-      assert(Date.now() < deadline, "serve did not come up in time");
-      await new Promise((r) => setTimeout(r, 200));
-    }
+    await poll(
+      async () => {
+        try {
+          const r = await fetch(`${base}/health`);
+          await r.body?.cancel();
+          return r.ok;
+        } catch {
+          return false; // Not up yet.
+        }
+      },
+      (up) => up,
+      { interval: 200, signal: AbortSignal.timeout(20_000) },
+    );
 
     const models = await (await fetch(`${base}/v1/models`)).json();
     assert(models.data?.[0]?.id === modelName, `models response: ${JSON.stringify(models)}`);

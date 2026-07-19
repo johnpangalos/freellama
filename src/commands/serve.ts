@@ -1,7 +1,9 @@
 // OpenAI-compatible front server. Chat requests are reverse-proxied to a
 // llama-server subprocess that is lazily started for the requested model.
 
+import { poll } from "@std/async";
 import { parseArgs } from "@std/cli/parse-args";
+import { status } from "../lib/util.ts";
 import { getModel, listModels } from "../lib/store.ts";
 import { ensureLlamaServer } from "../lib/backend.ts";
 import { type LlamaServerHandle, startLlamaServer } from "../lib/runner.ts";
@@ -9,6 +11,25 @@ import { type LlamaServerHandle, startLlamaServer } from "../lib/runner.ts";
 interface Backend {
   name: string;
   handle: LlamaServerHandle;
+  /** Requests currently proxied to this backend (including streaming bodies). */
+  inflight: number;
+}
+
+// How long a swap waits for in-flight requests to finish before stopping the
+// old backend anyway (a stalled client must not wedge the server forever).
+const DRAIN_TIMEOUT_MS = 30_000;
+
+async function drain(backend: Backend): Promise<void> {
+  try {
+    await poll(() => backend.inflight, (n) => n === 0, {
+      interval: 100,
+      signal: AbortSignal.timeout(DRAIN_TIMEOUT_MS),
+    });
+  } catch {
+    status(
+      `swap: ${backend.inflight} request(s) still active after drain timeout, stopping anyway`,
+    );
+  }
 }
 
 function openaiError(status: number, message: string, type: string, code?: string): Response {
@@ -36,14 +57,18 @@ export async function serveCommand(args: string[]): Promise<void> {
     const acquire = swapLock.then(async () => {
       if (backend?.name === name) return backend;
       if (backend) {
-        console.error(`swapping model: ${backend.name} -> ${name}`);
-        await backend.handle.stop();
+        status(`swapping model: ${backend.name} -> ${name}`);
+        const old = backend;
         backend = null;
+        // Let responses that are still streaming from the old backend finish
+        // before killing it; new requests already see backend === null.
+        await drain(old);
+        await old.handle.stop();
       }
-      console.error(`loading ${name}...`);
+      status(`loading ${name}...`);
       const handle = await startLlamaServer({ serverBin, modelPath });
-      console.error(`${name} ready`);
-      backend = { name, handle };
+      status(`${name} ready`);
+      backend = { name, handle, inflight: 0 };
       return backend;
     });
     swapLock = acquire.catch(() => {});
@@ -64,7 +89,7 @@ export async function serveCommand(args: string[]): Promise<void> {
         data: models.map(({ name, entry }) => ({
           id: name,
           object: "model",
-          created: Math.floor(new Date(entry.pulledAt).getTime() / 1000),
+          created: Math.floor(new Date(entry.pulledAt).getTime() / 1000) || 0,
           owned_by: "library",
         })),
       });
@@ -92,8 +117,19 @@ export async function serveCommand(args: string[]): Promise<void> {
         );
       }
 
+      let tracked: Backend | undefined;
+      const release = () => {
+        if (tracked) {
+          tracked.inflight--;
+          tracked = undefined;
+        }
+      };
       try {
         const b = await backendFor(model.name, model.entry.file);
+        // Count this request (until its body finishes streaming) so a model
+        // swap drains it instead of killing the backend mid-response.
+        b.inflight++;
+        tracked = b;
         // Pass req.signal through so a client disconnect aborts generation.
         const upstream = await fetch(`${b.handle.baseUrl}/v1/chat/completions`, {
           method: "POST",
@@ -101,7 +137,11 @@ export async function serveCommand(args: string[]): Promise<void> {
           body: rawBody,
           signal: req.signal,
         });
-        return new Response(upstream.body, {
+        const body = upstream.body?.pipeThrough(
+          new TransformStream({ flush: release, cancel: release }),
+        ) ?? null;
+        if (!body) release();
+        return new Response(body, {
           status: upstream.status,
           headers: {
             "Content-Type": upstream.headers.get("Content-Type") ?? "application/json",
@@ -109,6 +149,7 @@ export async function serveCommand(args: string[]): Promise<void> {
           },
         });
       } catch (err) {
+        release();
         if (req.signal.aborted) return new Response(null, { status: 499 });
         const message = err instanceof Error ? err.message : String(err);
         return openaiError(502, `llama.cpp backend error: ${message}`, "server_error");
@@ -126,13 +167,18 @@ export async function serveCommand(args: string[]): Promise<void> {
     hostname,
     port,
     onListen: ({ hostname, port }) => {
-      console.error(`freellama listening on http://${hostname}:${port}/v1`);
-      console.error("point any OpenAI client at this base URL (any api key works)");
+      status(`freellama listening on http://${hostname}:${port}/v1`);
+      status("point any OpenAI client at this base URL (any api key works)");
+      if (hostname !== "127.0.0.1" && hostname !== "localhost") {
+        status(
+          `warning: serving on ${hostname} without authentication — anyone who can reach it can use your models`,
+        );
+      }
     },
   }, handler);
 
   const shutdown = async () => {
-    console.error("\nshutting down...");
+    status("\nshutting down...");
     await backend?.handle.stop();
     await server.shutdown();
     Deno.exit(0);

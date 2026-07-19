@@ -1,7 +1,8 @@
-#!/usr/bin/env -S deno run -A
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-run --allow-env=FREELLAMA_CTX,FREELLAMA_DEBUG,FREELLAMA_HOME,FREELLAMA_LLAMA_SERVER,FREELLAMA_LLAMA_VERSION,FREELLAMA_SERVER_ARGS,GITHUB_TOKEN,HF_TOKEN,HOME,USERPROFILE
 // freellama — run LLMs locally, powered by llama.cpp. See README.md for credits.
-// Scoped runtime permissions live in tasks.ts (deno task dev/compile/install);
-// this shebang stays -A for direct `./src/cli.ts` execution during development.
+// The shebang above is the single source of truth for runtime permissions:
+// tasks.ts parses it, so `./src/cli.ts`, deno task dev, compile, and install
+// all run with the identical scoped flag set.
 
 import { pullCommand } from "./commands/pull.ts";
 import { listCommand } from "./commands/list.ts";
@@ -57,8 +58,9 @@ async function main() {
     case "-h":
       return console.log(HELP);
     default:
+      // Error path: help is diagnostic output here, keep stdout clean for pipes.
       console.error(`Unknown command: ${command}\n`);
-      console.log(HELP);
+      console.error(HELP);
       Deno.exit(1);
   }
 }

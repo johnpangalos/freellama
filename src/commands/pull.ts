@@ -10,21 +10,40 @@ export async function pullModel(reference: string): Promise<{ name: string; entr
 
   const existing = await getModel(resolved.name);
   if (existing && existing.entry.sizeBytes === resolved.sizeBytes) {
-    try {
-      const stat = await Deno.stat(existing.entry.file);
-      if (stat.size === resolved.sizeBytes) return existing;
-    } catch {
-      // File missing — re-download below.
+    const sizes = await Promise.all(
+      (existing.entry.files ?? [existing.entry.file])
+        .map((f) => Deno.stat(f).then((s) => s.size).catch(() => undefined)),
+    );
+    // A missing or truncated part falls through to the (idempotent) downloads.
+    if (
+      sizes.every((s) => s !== undefined) &&
+      sizes.reduce((a, b) => a + b, 0) === resolved.sizeBytes
+    ) {
+      return existing;
     }
   }
 
   const progress = progressPrinter(`pulling ${resolved.name}`);
-  const file = await downloadGguf(ref.repo, resolved.remotePath, resolved.sizeBytes, progress);
+  const localFiles: string[] = [];
+  let done = 0;
+  for (const part of resolved.files) {
+    const offset = done;
+    localFiles.push(
+      await downloadGguf(
+        ref.repo,
+        part.remotePath,
+        part.sizeBytes,
+        (p) => progress({ received: offset + p.received, total: resolved.sizeBytes }),
+      ),
+    );
+    done += part.sizeBytes;
+  }
   progress();
 
   const entry: ModelEntry = {
     uri: resolved.uri,
-    file,
+    file: localFiles[0],
+    ...(localFiles.length > 1 ? { files: localFiles } : {}),
     sizeBytes: resolved.sizeBytes,
     pulledAt: new Date().toISOString(),
   };

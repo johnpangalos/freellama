@@ -5,8 +5,11 @@ import { join } from "@std/path";
 export interface ModelEntry {
   /** Full source URI, e.g. "hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M". */
   uri: string;
-  /** Absolute path of the GGUF file on disk. */
+  /** Absolute path of the GGUF file on disk (the first part for split models). */
   file: string;
+  /** All parts of a split (multi-part) GGUF, in order. Absent for single-file models. */
+  files?: string[];
+  /** Total size across all parts. */
   sizeBytes: number;
   /** ISO timestamp of when the model was pulled. */
   pulledAt: string;
@@ -76,7 +79,7 @@ export async function addModel(name: string, entry: ModelEntry): Promise<void> {
   await writeManifest(manifest);
 }
 
-/** Remove a model's manifest entry and file. Returns the removed entry, if any. */
+/** Remove a model's manifest entry and file(s). Returns the removed entry, if any. */
 export async function removeModel(nameOrUri: string): Promise<ModelEntry | undefined> {
   const name = normalizeName(nameOrUri);
   const manifest = await readManifest();
@@ -84,10 +87,12 @@ export async function removeModel(nameOrUri: string): Promise<ModelEntry | undef
   if (!entry) return undefined;
   delete manifest.models[name];
   await writeManifest(manifest);
-  try {
-    await Deno.remove(entry.file);
-  } catch (err) {
-    if (!(err instanceof Deno.errors.NotFound)) throw err;
+  for (const file of entry.files ?? [entry.file]) {
+    try {
+      await Deno.remove(file);
+    } catch (err) {
+      if (!(err instanceof Deno.errors.NotFound)) throw err;
+    }
   }
   return entry;
 }

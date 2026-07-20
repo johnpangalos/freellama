@@ -2,11 +2,13 @@
 // exercises the runner lifecycle, the streaming client, the `run` one-shot path,
 // and the `serve` proxy — everything except real inference.
 
-import { assert } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { poll } from "@std/async";
 import { fromFileUrl, join } from "@std/path";
 import { startLlamaServer } from "../src/lib/runner.ts";
 import { streamChat } from "../src/lib/openai.ts";
+import { pullModel } from "../src/commands/pull.ts";
+import { getModel, removeModel } from "../src/lib/store.ts";
 
 const projectRoot = fromFileUrl(new URL("..", import.meta.url));
 
@@ -42,6 +44,58 @@ async function makeFixture(): Promise<{ home: string; wrapper: string; modelName
   );
   return { home, wrapper, modelName };
 }
+
+Deno.test("pull downloads every part of a split gguf and rm removes them all", async () => {
+  const home = await Deno.makeTempDir({ prefix: "freellama-split-" });
+  const prevHome = Deno.env.get("FREELLAMA_HOME");
+  Deno.env.set("FREELLAMA_HOME", home);
+  const realFetch = globalThis.fetch;
+
+  const parts = [
+    "m-Q4-00001-of-00003.gguf",
+    "m-Q4-00002-of-00003.gguf",
+    "m-Q4-00003-of-00003.gguf",
+  ];
+  const content = (path: string) => new TextEncoder().encode(`fake gguf ${path}`);
+  globalThis.fetch = ((input: URL | Request | string, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url.includes("/api/models/user/repo/tree/main")) {
+      return Promise.resolve(Response.json(
+        parts.map((path) => ({ type: "file", path, size: content(path).byteLength })),
+      ));
+    }
+    const dl = url.match(/resolve\/main\/(.+)\?download=true$/);
+    if (dl) return Promise.resolve(new Response(content(dl[1])));
+    return realFetch(input, init);
+  }) as typeof fetch;
+
+  try {
+    const { entry } = await pullModel("hf:user/repo:Q4");
+    assertEquals(entry.files?.length, 3);
+    assertEquals(entry.file, entry.files?.[0]);
+    assert(entry.file.endsWith("user__repo__m-Q4-00001-of-00003.gguf"), entry.file);
+    assertEquals(entry.sizeBytes, parts.reduce((s, p) => s + content(p).byteLength, 0));
+    for (const file of entry.files!) {
+      assert((await Deno.stat(file)).isFile, `part not downloaded: ${file}`);
+    }
+
+    // A second pull is a no-op served from the manifest.
+    const again = await pullModel("hf:user/repo:Q4");
+    assertEquals(again.entry.pulledAt, entry.pulledAt);
+
+    await removeModel("user/repo:Q4");
+    assertEquals(await getModel("user/repo:Q4"), undefined);
+    for (const file of entry.files!) {
+      const gone = await Deno.stat(file).then(() => false, () => true);
+      assert(gone, `rm left part behind: ${file}`);
+    }
+  } finally {
+    globalThis.fetch = realFetch;
+    if (prevHome === undefined) Deno.env.delete("FREELLAMA_HOME");
+    else Deno.env.set("FREELLAMA_HOME", prevHome);
+    await Deno.remove(home, { recursive: true });
+  }
+});
 
 Deno.test("runner starts the server, streamChat streams, stop terminates", async () => {
   const { home, wrapper } = await makeFixture();

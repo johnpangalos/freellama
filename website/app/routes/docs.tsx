@@ -1,9 +1,9 @@
 import { BreadcrumbLink, Breadcrumbs, Separator } from "@comp0/react";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import type { Route } from "./+types/docs";
-import { CodeBlock } from "../components/CodeBlock";
-import { CommandSection } from "../components/CommandSection";
+import { CodeBlock } from "../components/CodeBlock.tsx";
+import { CommandSection } from "../components/CommandSection.tsx";
 
 export function meta({}: Route.MetaArgs) {
 	return [
@@ -25,9 +25,7 @@ function Kbd({ children }: { children: ReactNode }) {
 }
 
 function Code({ children }: { children: ReactNode }) {
-	return (
-		<code className="bg-lime px-1 font-mono text-sm font-bold">{children}</code>
-	);
+	return <code className="bg-lime px-1 font-mono text-sm font-bold">{children}</code>;
 }
 
 function DocsTable({
@@ -101,10 +99,9 @@ export default function Docs() {
 				CLI reference
 			</h1>
 			<p className="mt-4 max-w-prose text-lg leading-relaxed">
-				Everything the <Code>freellama</Code> binary can do. Model references
-				use the form <Code>hf:user/repo:QUANT</Code> or{" "}
-				<Code>hf:user/repo/file.gguf</Code> and download straight from Hugging
-				Face.
+				Everything the <Code>freellama</Code> binary can do. Model references use the form{" "}
+				<Code>hf:user/repo:QUANT</Code> or <Code>hf:user/repo/file.gguf</Code>{" "}
+				and download straight from Hugging Face.
 			</p>
 
 			<div className="mt-8">
@@ -168,15 +165,15 @@ echo "Why is the sky blue?" | freellama run hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q
 						rows={[
 							["/clear", "Reset the conversation"],
 							[
-								<>
+								<Fragment key="bye">
 									/bye or <Kbd>Ctrl</Kbd>+<Kbd>D</Kbd>
-								</>,
+								</Fragment>,
 								"Exit the REPL",
 							],
 							[
-								<>
+								<Fragment key="interrupt">
 									<Kbd>Ctrl</Kbd>+<Kbd>C</Kbd>
-								</>,
+								</Fragment>,
 								"Interrupt a response without exiting",
 							],
 						]}
@@ -222,10 +219,9 @@ echo "Why is the sky blue?" | freellama run hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q
 							["GET /v1/models", "List installed models (OpenAI format)"],
 							[
 								"POST /v1/chat/completions",
-								<>
-									Chat completions; supports <Code>"stream": true</Code>{" "}
-									(server-sent events)
-								</>,
+								<Fragment key="chat">
+									Chat completions; supports <Code>"stream": true</Code> (server-sent events)
+								</Fragment>,
 							],
 						]}
 					/>
@@ -272,23 +268,21 @@ curl http://127.0.0.1:11434/v1/models`}
 							],
 							[
 								"FREELLAMA_LLAMA_VERSION",
-								<>
-									Pin a llama.cpp release tag, e.g. <Code>b5900</Code> (default:
-									latest)
-								</>,
+								<Fragment key="version">
+									Pin a llama.cpp release tag, e.g. <Code>b5900</Code> (default: latest)
+								</Fragment>,
 							],
 							[
 								"FREELLAMA_LLAMA_SERVER",
-								<>
-									Path to an existing <Code>llama-server</Code> binary (skips
-									downloads)
-								</>,
+								<Fragment key="server">
+									Path to an existing <Code>llama-server</Code> binary (skips downloads)
+								</Fragment>,
 							],
 							[
 								"FREELLAMA_SERVER_ARGS",
-								<>
+								<Fragment key="args">
 									Extra flags passed through to <Code>llama-server</Code>
-								</>,
+								</Fragment>,
 							],
 							[
 								"FREELLAMA_DEBUG=1",

@@ -1,4 +1,11 @@
 {
-	"nodeModulesDir": "auto",
-	"allowScripts": ["npm:sharp", "npm:workerd"]
+	"fmt": {
+		"useTabs": true
+	},
+	"exclude": [
+		"build",
+		".react-router",
+		".wrangler",
+		"worker-configuration.d.ts"
+	]
 }

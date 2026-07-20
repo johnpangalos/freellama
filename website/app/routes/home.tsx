@@ -2,7 +2,7 @@ import { Button, Tab, TabList, TabPanel, Tabs } from "@comp0/react";
 import { Link as RouterLink } from "react-router";
 
 import type { Route } from "./+types/home";
-import { CodeBlock } from "../components/CodeBlock";
+import { CodeBlock } from "../components/CodeBlock.tsx";
 
 export function meta({}: Route.MetaArgs) {
 	return [
@@ -21,7 +21,8 @@ const tabClass =
 const features = [
 	{
 		title: "openai-compatible api",
-		body: "freellama serve speaks the OpenAI API on localhost:11434 — point any client or SDK at it.",
+		body:
+			"freellama serve speaks the OpenAI API on localhost:11434 — point any client or SDK at it.",
 	},
 	{
 		title: "ollama-style cli",
@@ -46,11 +47,10 @@ export default function Home() {
 					freellama<span className="text-accent">_</span>
 				</h1>
 				<p className="mt-6 max-w-2xl text-lg leading-relaxed sm:text-xl">
-					Run LLMs locally with an Ollama-style CLI and an OpenAI-compatible
-					API — powered by{" "}
+					Run LLMs locally with an Ollama-style CLI and an OpenAI-compatible API — powered by{" "}
 					<span className="bg-lime px-1 font-bold">llama.cpp</span>, built with{" "}
-					<span className="bg-lime px-1 font-bold">Deno</span>, and released
-					into the <span className="bg-lime px-1 font-bold">public domain</span>.
+					<span className="bg-lime px-1 font-bold">Deno</span>, and released into the{" "}
+					<span className="bg-lime px-1 font-bold">public domain</span>.
 				</p>
 				<div className="mt-8 flex flex-wrap gap-4">
 					<Button

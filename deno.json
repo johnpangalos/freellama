@@ -22,5 +22,8 @@
     "lineWidth": 100,
     "exclude": ["CHANGELOG.md"]
   },
-  "exclude": ["freellama", "website"]
+  "workspace": ["./website"],
+  "nodeModulesDir": "auto",
+  "exclude": ["freellama"],
+  "allowScripts": ["npm:sharp", "npm:workerd"]
 }

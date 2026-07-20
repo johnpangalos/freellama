@@ -1,9 +1,13 @@
 # Release Please keeps an open release PR that accumulates CHANGELOG.md and the
 # version bump from Conventional Commit messages on main. Merging that PR
-# creates the tag and GitHub Release, and the binaries job below attaches
-# cross-compiled builds to it. The binaries job chains off outputs (rather than
-# an `on: push: tags` trigger) because tags created with the workflow's own
-# GITHUB_TOKEN never trigger other workflows.
+# creates a draft GitHub Release; the binaries job below attaches
+# cross-compiled builds and then publishes it. The release must stay a draft
+# until the assets are attached because the repo uses immutable releases —
+# once published, assets can no longer be added (the upload fails with HTTP
+# 422). A draft release has no tag yet, so the binaries job checks out the
+# release SHA rather than the tag. The binaries job chains off outputs (rather
+# than an `on: push: tags` trigger) because tags created with the workflow's
+# own GITHUB_TOKEN never trigger other workflows.
 name: release
 
 on:
@@ -20,6 +24,7 @@ jobs:
     outputs:
       release_created: ${{ steps.rp.outputs.release_created }}
       tag_name: ${{ steps.rp.outputs.tag_name }}
+      sha: ${{ steps.rp.outputs.sha }}
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
         id: rp
@@ -36,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
+          ref: ${{ needs.release-please.outputs.sha }}
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
@@ -53,7 +58,9 @@ jobs:
               tar -czf "dist/freellama-$target.tar.gz" -C "dist/$target" freellama
             fi
           done
-      - name: Upload binaries to the release
+      - name: Upload binaries and publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ needs.release-please.outputs.tag_name }}" dist/freellama-*.tar.gz dist/freellama-*.zip
+        run: |
+          gh release upload "${{ needs.release-please.outputs.tag_name }}" dist/freellama-*.tar.gz dist/freellama-*.zip
+          gh release edit "${{ needs.release-please.outputs.tag_name }}" --draft=false

@@ -37,10 +37,39 @@ export function refToName(ref: HfRef): string {
   return ref.repo;
 }
 
-interface HfTreeEntry {
+export interface HfTreeEntry {
   type: string;
   path: string;
   size: number;
+}
+
+/** Split (multi-part) GGUF naming, e.g. "model-00001-of-00007.gguf". */
+const SPLIT_SUFFIX = /-(\d{5})-of-(\d{5})\.gguf$/i;
+
+/**
+ * All parts of the split GGUF `chosen` belongs to, ordered by part number, or
+ * just [chosen] for a single-file GGUF. Throws when the repo is missing parts.
+ */
+export function splitParts(chosen: HfTreeEntry, all: HfTreeEntry[]): HfTreeEntry[] {
+  const match = chosen.path.match(SPLIT_SUFFIX);
+  if (!match) return [chosen];
+  const total = Number(match[2]);
+  const prefix = chosen.path.slice(0, -match[0].length);
+  const parts: HfTreeEntry[] = [];
+  const missing: string[] = [];
+  for (let i = 1; i <= total; i++) {
+    const path = `${prefix}-${String(i).padStart(5, "0")}-of-${match[2]}.gguf`;
+    const part = all.find((f) => f.path === path);
+    if (part) parts.push(part);
+    else missing.push(path);
+  }
+  if (missing.length > 0) {
+    throw new Error(
+      `"${chosen.path}" is part of a ${total}-part split GGUF, but the repo is missing:\n` +
+        missing.map((p) => `  - ${p}`).join("\n"),
+    );
+  }
+  return parts;
 }
 
 function authHeaders(): HeadersInit {
@@ -65,10 +94,20 @@ async function listRepoFiles(repo: string): Promise<HfTreeEntry[]> {
   return (await resp.json()) as HfTreeEntry[];
 }
 
-/** Resolve a reference to the exact file to download. */
+/**
+ * Resolve a reference to the exact file(s) to download. Split (multi-part)
+ * GGUFs resolve to all their parts, ordered; llama-server is pointed at the
+ * first part and discovers the rest from the shared naming pattern.
+ */
 export async function resolveGguf(
   ref: HfRef,
-): Promise<{ remotePath: string; sizeBytes: number; name: string; uri: string }> {
+): Promise<{
+  files: Array<{ remotePath: string; sizeBytes: number }>;
+  /** Total size across all parts. */
+  sizeBytes: number;
+  name: string;
+  uri: string;
+}> {
   const files = await listRepoFiles(ref.repo);
   const ggufs = files.filter((f) => f.type === "file" && f.path.toLowerCase().endsWith(".gguf"));
   if (ggufs.length === 0) {
@@ -95,9 +134,10 @@ export async function resolveGguf(
         `No .gguf matching quant "${ref.quant}" in ${ref.repo}. Available:\n${ggufList(ggufs)}`,
       );
     }
-    // Prefer exact "-QUANT.gguf" suffix matches over loose substring hits.
-    chosen = matches.find((f) => basename(f.path).toLowerCase().endsWith(`-${quant}.gguf`)) ??
-      matches[0];
+    // Prefer exact "-QUANT.gguf" suffix matches over loose substring hits,
+    // ignoring a trailing "-00001-of-00007" split-part suffix.
+    const stem = (f: HfTreeEntry) => basename(f.path).toLowerCase().replace(SPLIT_SUFFIX, ".gguf");
+    chosen = matches.find((f) => stem(f).endsWith(`-${quant}.gguf`)) ?? matches[0];
   } else {
     throw new Error(
       `Specify a quant or file for ${ref.repo}. Available:\n${ggufList(ggufs)}\n` +
@@ -105,14 +145,14 @@ export async function resolveGguf(
     );
   }
 
-  if (/-\d{5}-of-\d{5}\.gguf$/i.test(chosen.path)) {
-    throw new Error(
-      `"${chosen.path}" is a split (multi-part) GGUF, which freellama does not support yet. Pick a single-file quant.`,
-    );
-  }
-
+  const parts = splitParts(chosen, ggufs);
   const name = refToName(ref);
-  return { remotePath: chosen.path, sizeBytes: chosen.size, name, uri: toUri(name) };
+  return {
+    files: parts.map((f) => ({ remotePath: f.path, sizeBytes: f.size })),
+    sizeBytes: parts.reduce((sum, f) => sum + f.size, 0),
+    name,
+    uri: toUri(name),
+  };
 }
 
 function ggufList(files: HfTreeEntry[]): string {

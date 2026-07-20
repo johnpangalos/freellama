@@ -11,7 +11,8 @@ export async function listCommand(_args: string[]): Promise<void> {
   }
 
   const rows = await Promise.all(models.map(async ({ name, entry }) => {
-    const size = await exists(entry.file) ? formatBytes(entry.sizeBytes) : "missing!";
+    const present = await Promise.all((entry.files ?? [entry.file]).map((f) => exists(f)));
+    const size = present.every(Boolean) ? formatBytes(entry.sizeBytes) : "missing!";
     return { name, size, modified: entry.pulledAt.slice(0, 16).replace("T", " ") };
   }));
 

@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import { join } from "@std/path";
 import { zipSync } from "fflate";
-import { parseHfRef, refToName } from "../src/lib/hf.ts";
+import { type HfTreeEntry, parseHfRef, refToName, splitParts } from "../src/lib/hf.ts";
 import { extractZip, pickAsset } from "../src/lib/backend.ts";
 import { formatBytes } from "../src/lib/util.ts";
 
@@ -35,6 +35,38 @@ Deno.test("parseHfRef: rejects garbage", () => {
 Deno.test("refToName round-trips", () => {
   assertEquals(refToName(parseHfRef("hf:a/b:Q8_0")), "a/b:Q8_0");
   assertEquals(refToName(parseHfRef("a/b/f.gguf")), "a/b/f.gguf");
+});
+
+function entry(path: string, size = 1): HfTreeEntry {
+  return { type: "file", path, size };
+}
+
+Deno.test("splitParts: single-file gguf resolves to itself", () => {
+  const single = entry("model-Q4_K_M.gguf");
+  assertEquals(splitParts(single, [single, entry("other-Q8_0.gguf")]), [single]);
+});
+
+Deno.test("splitParts: expands the full group in order from any part", () => {
+  const parts = [
+    entry("UD-IQ1_S/m-UD-IQ1_S-00002-of-00003.gguf"),
+    entry("UD-IQ1_S/m-UD-IQ1_S-00001-of-00003.gguf"),
+    entry("UD-IQ1_S/m-UD-IQ1_S-00003-of-00003.gguf"),
+  ];
+  const all = [...parts, entry("Q8_0/m-Q8_0-00001-of-00002.gguf")];
+  assertEquals(splitParts(parts[0], all).map((f) => f.path), [
+    "UD-IQ1_S/m-UD-IQ1_S-00001-of-00003.gguf",
+    "UD-IQ1_S/m-UD-IQ1_S-00002-of-00003.gguf",
+    "UD-IQ1_S/m-UD-IQ1_S-00003-of-00003.gguf",
+  ]);
+});
+
+Deno.test("splitParts: rejects a group with missing parts", () => {
+  const first = entry("m-Q4-00001-of-00003.gguf");
+  assertThrows(
+    () => splitParts(first, [first, entry("m-Q4-00003-of-00003.gguf")]),
+    Error,
+    "m-Q4-00002-of-00003.gguf",
+  );
 });
 
 // Current llama.cpp releases ship macOS/Linux builds as .tar.gz and Windows as .zip.

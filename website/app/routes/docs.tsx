@@ -18,9 +18,22 @@ export function meta({}: Route.MetaArgs) {
 
 function Kbd({ children }: { children: ReactNode }) {
 	return (
-		<kbd className="border-2 border-ink bg-paper px-1.5 py-0.5 font-mono text-xs font-bold shadow-brutal-sm">
+		<kbd className="inline-block border-2 border-b-4 border-ink bg-paper px-1.5 py-0.5 font-mono text-xs font-bold">
 			{children}
 		</kbd>
+	);
+}
+
+function Keys({ keys }: { keys: string[] }) {
+	return (
+		<span className="inline-flex items-center gap-1.5">
+			{keys.map((key, i) => (
+				<Fragment key={key}>
+					{i > 0 && <span aria-hidden="true">+</span>}
+					<Kbd>{key}</Kbd>
+				</Fragment>
+			))}
+		</span>
 	);
 }
 
@@ -166,14 +179,12 @@ echo "Why is the sky blue?" | freellama run hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q
 							["/clear", "Reset the conversation"],
 							[
 								<Fragment key="bye">
-									/bye or <Kbd>Ctrl</Kbd>+<Kbd>D</Kbd>
+									/bye or <Keys keys={["Ctrl", "D"]} />
 								</Fragment>,
 								"Exit the REPL",
 							],
 							[
-								<Fragment key="interrupt">
-									<Kbd>Ctrl</Kbd>+<Kbd>C</Kbd>
-								</Fragment>,
+								<Keys key="interrupt" keys={["Ctrl", "C"]} />,
 								"Interrupt a response without exiting",
 							],
 						]}

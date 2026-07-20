@@ -104,3 +104,14 @@ Deno.test("formatBytes", () => {
   assertEquals(formatBytes(500), "500 B");
   assertEquals(formatBytes(398_000_000), "398 MB");
 });
+
+Deno.test("deno.compile.jsonc imports stay in sync with deno.json", async () => {
+  const root = JSON.parse(await Deno.readTextFile(new URL("../deno.json", import.meta.url)));
+  const compileRaw = await Deno.readTextFile(new URL("../deno.compile.jsonc", import.meta.url));
+  // deno.compile.jsonc only uses full-line // comments, so stripping those
+  // lines yields plain JSON.
+  const compile = JSON.parse(
+    compileRaw.split("\n").filter((line) => !line.trimStart().startsWith("//")).join("\n"),
+  );
+  assertEquals(compile.imports, root.imports);
+});

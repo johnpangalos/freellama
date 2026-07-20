@@ -15,6 +15,7 @@
 		"@types/node": "24.10.1",
 		"@types/react": "19.2.7",
 		"@types/react-dom": "19.2.3",
+		"react-refresh": "^0.14.2",
 		"tailwindcss": "4.1.17",
 		"typescript": "5.9.3",
 		"vite": "^7.0.0",
@@ -23,13 +24,13 @@
 	},
 	"private": true,
 	"scripts": {
-		"build": "react-router build",
-		"cf-typegen": "wrangler types && react-router typegen",
-		"check": "tsc && react-router build && wrangler deploy --dry-run",
-		"deploy": "wrangler deploy",
-		"dev": "react-router dev",
-		"preview": "vite preview",
-		"typecheck": "react-router typegen && tsc -b"
+		"build": "node node_modules/.bin/react-router build",
+		"cf-typegen": "node node_modules/.bin/wrangler types && node node_modules/.bin/react-router typegen",
+		"check": "node node_modules/.bin/tsc && node node_modules/.bin/react-router build && node node_modules/.bin/wrangler deploy --dry-run",
+		"deploy": "node node_modules/.bin/wrangler deploy",
+		"dev": "node node_modules/.bin/react-router dev",
+		"preview": "node node_modules/.bin/vite preview",
+		"typecheck": "node node_modules/.bin/react-router typegen && node node_modules/.bin/tsc -b"
 	},
 	"type": "module"
 }

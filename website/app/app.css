@@ -1,8 +1,8 @@
 @import "tailwindcss" source(".");
 
 @theme {
-	/* palette — flat, bold, warm paper */
-	--color-paper: #fff6ea;
+	/* palette — flat, bold, cool paper */
+	--color-paper: #eceaf3;
 	--color-ink: #0d0d0d;
 	--color-accent: #ff5c00;
 	--color-blue: #3b49ff;

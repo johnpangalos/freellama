@@ -1,27 +1,16 @@
 # freellama
 
-Run LLMs locally with an Ollama-style CLI and an OpenAI-compatible API — powered by
-[llama.cpp](https://github.com/ggml-org/llama.cpp), built with [Deno](https://deno.com), and
-released into the public domain.
+A thin wrapper of [llama.cpp](https://github.com/ggml-org/llama.cpp) with an OpenAI-compatible API
+built with [Deno](https://deno.com), and released into the public domain.
 
-freellama downloads GGUF models straight from [Hugging Face](https://huggingface.co) and manages the
-official prebuilt `llama-server` binary from llama.cpp's releases for you. No registry, no account,
-no telemetry.
+freellama downloads GGUF models from [Hugging Face](https://huggingface.co) and manages the official
+prebuilt `llama-server` binary from llama.cpp's releases for you.
 
-## Quick start
+## Motivation
 
-Requires [Deno](https://docs.deno.com/runtime/getting_started/installation/) 2.x.
-
-```bash
-# download a small model (~400 MB) from Hugging Face
-deno task dev pull hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M
-
-# chat with it
-deno task dev run Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M
-
-# or one-shot
-deno task dev run Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M "Say hello in five words"
-```
+An easy alternative to the controverisal Ollama project. This project is meant to be an easy way to
+get local AI running on your computer not backed by a VC and has no ambitions of being a real
+company. Use it or don't, it's all good!
 
 ## Install
 
@@ -44,14 +33,6 @@ deno task install   # install `freellama` on your PATH (deno install)
 deno task compile   # or build a standalone binary: ./freellama
 ```
 
-Both tasks build with scoped Deno permissions rather than `--allow-all`: `--allow-env` is limited to
-the variables freellama reads, and it requests no `--allow-ffi` or `--allow-sys`. Network,
-subprocess, and disk access stay open because model downloads redirect through Hugging Face / GitHub
-CDNs and the `llama-server` binary path is resolved at runtime. The flag set is defined once, in the
-[`src/cli.ts`](src/cli.ts) shebang; [`tasks.ts`](tasks.ts) parses it, so running the script directly
-behaves exactly like the compiled or installed binary. Add Deno's `--target` in tasks.ts (or on a
-one-off `deno compile`) to cross-compile for another platform.
-
 ## Commands
 
 | Command                       | Description                                                                          |
@@ -69,7 +50,7 @@ writes only the reply, so `run` composes in shell pipelines.
 ## OpenAI-compatible server
 
 ```bash
-deno task dev serve
+freellama serve
 ```
 
 Then point any OpenAI client at it (the API key can be anything):
@@ -93,6 +74,8 @@ s).
 The server has no authentication. It binds `127.0.0.1` by default; if you pass `--host 0.0.0.0` (or
 any non-loopback address), anyone who can reach the port can run inference on your machine — put it
 behind a reverse proxy or firewall first.
+
+### How about an example?
 
 ```python
 from openai import OpenAI
@@ -145,3 +128,6 @@ Inc., the llama.cpp project, Meta Platforms, or Hugging Face.
 
 freellama itself is released into the public domain under [The Unlicense](LICENSE). The llama.cpp
 binaries it downloads, and the models you pull, keep their own licenses.
+
+I generated this code with AI, I might as well pay it forward. I make no claims of intelectual
+property beyond purchasing a claude subscription.

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3](https://github.com/johnpangalos/freellama/compare/v0.1.2...v0.1.3) (2026-07-20)
+
+
+### Bug Fixes
+
+* **ci:** publish releases as drafts until binaries are attached ([#22](https://github.com/johnpangalos/freellama/issues/22)) ([e2a9d2f](https://github.com/johnpangalos/freellama/commit/e2a9d2fb7b87838fb8e7b79693dd24f7252e95c0))
+* **website:** repair Workers Builds deploy and upgrade to vite 8 ([#26](https://github.com/johnpangalos/freellama/issues/26)) ([54bc54a](https://github.com/johnpangalos/freellama/commit/54bc54a89ee399e35eaff5214cd887f407da7650))
+
 ## [0.1.2](https://github.com/johnpangalos/freellama/compare/v0.1.1...v0.1.2) (2026-07-20)
 
 

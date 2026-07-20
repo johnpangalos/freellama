@@ -1,4 +1,5 @@
 import { Button, Tab, TabList, TabPanel, Tabs } from "@comp0/react";
+import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router";
 
 import type { Route } from "./+types/home";
@@ -18,26 +19,16 @@ export function meta({}: Route.MetaArgs) {
 const tabClass =
 	"border-[3px] border-ink border-b-0 px-4 py-2 font-mono text-sm font-bold uppercase tracking-wide data-selected:bg-ink data-selected:text-paper data-hovered:bg-lime data-selected:data-hovered:bg-ink data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue";
 
-const features = [
-	{
-		title: "openai-compatible api",
-		body:
-			"freellama serve speaks the OpenAI API on localhost:11434 — point any client or SDK at it.",
-	},
-	{
-		title: "llama.cpp made easy",
-		body:
-			"The official prebuilt llama-server, downloaded and managed for you. No toolchain, no build flags — just pull, run, serve.",
-	},
-	{
-		title: "straight from hugging face",
-		body: "Models are plain GGUF files pulled directly from Hugging Face. No registry, no account.",
-	},
-	{
-		title: "public domain",
-		body: "Released under the Unlicense. No telemetry, no tracking, no strings.",
-	},
-];
+function FeatureCard({ title, children }: { title: string; children: ReactNode }) {
+	return (
+		<div className="border-[3px] border-ink bg-paper p-5 shadow-brutal">
+			<h3 className="font-mono text-base font-black uppercase tracking-tight">
+				{title}
+			</h3>
+			<p className="mt-2 leading-relaxed">{children}</p>
+		</div>
+	);
+}
 
 export default function Home() {
 	return (
@@ -99,17 +90,20 @@ export default function Home() {
 			{/* features */}
 			<section className="py-16" aria-label="Features">
 				<div className="grid gap-6 sm:grid-cols-2">
-					{features.map((feature) => (
-						<div
-							key={feature.title}
-							className="border-[3px] border-ink bg-paper p-5 shadow-brutal"
-						>
-							<h3 className="font-mono text-base font-black uppercase tracking-tight">
-								{feature.title}
-							</h3>
-							<p className="mt-2 leading-relaxed">{feature.body}</p>
-						</div>
-					))}
+					<FeatureCard title="openai-compatible api">
+						freellama serve speaks the OpenAI API on localhost:11434 — point any client or SDK at
+						it.
+					</FeatureCard>
+					<FeatureCard title="llama.cpp made easy">
+						The official prebuilt llama-server, downloaded and managed for you. No toolchain, no
+						build flags — just pull, run, serve.
+					</FeatureCard>
+					<FeatureCard title="straight from hugging face">
+						Models are plain GGUF files pulled directly from Hugging Face. No registry, no account.
+					</FeatureCard>
+					<FeatureCard title="public domain">
+						Released under the Unlicense. No telemetry, no tracking, no strings.
+					</FeatureCard>
 				</div>
 			</section>
 

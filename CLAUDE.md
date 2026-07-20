@@ -11,6 +11,9 @@ Ollama-style CLI + OpenAI-compatible server for running LLMs locally via llama.c
   Import via the `@std/*` entries in `deno.json`.
 - Prefer `@std/path` over `node:path`.
 - `deno task check` (type-check + lint + fmt) and `deno task test` must pass before committing.
+- In JSX (`website/`), write markup as raw JSX. Don't build data structures (arrays/objects of
+  content) that get `.map()`ed into elements — inline the elements directly, and share styling
+  through small components that take `children`. Reserve `.map()` for genuinely dynamic data.
 
 ## Commits and pull requests
 

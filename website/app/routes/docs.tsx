@@ -1,5 +1,5 @@
 import { BreadcrumbLink, Breadcrumbs, Separator } from "@comp0/react";
-import { Fragment, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import type { Route } from "./+types/docs";
 import { CodeBlock } from "../components/CodeBlock.tsx";
@@ -24,63 +24,63 @@ function Kbd({ children }: { children: ReactNode }) {
 	);
 }
 
-function Keys({ keys }: { keys: string[] }) {
-	return (
-		<span className="inline-flex items-center gap-1.5">
-			{keys.map((key, i) => (
-				<Fragment key={key}>
-					{i > 0 && <span aria-hidden="true">+</span>}
-					<Kbd>{key}</Kbd>
-				</Fragment>
-			))}
-		</span>
-	);
+function Keys({ children }: { children: ReactNode }) {
+	return <span className="inline-flex items-center gap-1.5">{children}</span>;
+}
+
+function Plus() {
+	return <span aria-hidden="true">+</span>;
 }
 
 function Code({ children }: { children: ReactNode }) {
 	return <code className="bg-lime px-1 font-mono text-sm font-bold">{children}</code>;
 }
 
-function DocsTable({
-	label,
-	head,
-	rows,
-}: {
-	label: string;
-	head: [string, string];
-	rows: [ReactNode, ReactNode][];
-}) {
+function DocsTable({ label, children }: { label: string; children: ReactNode }) {
 	return (
 		<div className="mt-6 overflow-x-auto">
 			<table
 				aria-label={label}
 				className="w-full border-[3px] border-ink shadow-brutal-sm"
 			>
-				<thead>
-					<tr className="border-b-[3px] border-ink bg-ink text-left text-paper">
-						<th className="px-3 py-2 font-mono text-xs font-bold uppercase tracking-widest">
-							{head[0]}
-						</th>
-						<th className="px-3 py-2 font-mono text-xs font-bold uppercase tracking-widest">
-							{head[1]}
-						</th>
-					</tr>
-				</thead>
-				<tbody>
-					{rows.map(([term, description], i) => (
-						<tr key={i} className="border-b-2 border-ink last:border-b-0">
-							<td className="px-3 py-2 align-top font-mono text-sm font-bold whitespace-nowrap">
-								{term}
-							</td>
-							<td className="px-3 py-2 align-top text-sm leading-relaxed">
-								{description}
-							</td>
-						</tr>
-					))}
-				</tbody>
+				{children}
 			</table>
 		</div>
 	);
+}
+
+function HeadRow({ children }: { children: ReactNode }) {
+	return (
+		<thead>
+			<tr className="border-b-[3px] border-ink bg-ink text-left text-paper">
+				{children}
+			</tr>
+		</thead>
+	);
+}
+
+function Th({ children }: { children: ReactNode }) {
+	return (
+		<th className="px-3 py-2 font-mono text-xs font-bold uppercase tracking-widest">
+			{children}
+		</th>
+	);
+}
+
+function Row({ children }: { children: ReactNode }) {
+	return <tr className="border-b-2 border-ink last:border-b-0">{children}</tr>;
+}
+
+function Term({ children }: { children: ReactNode }) {
+	return (
+		<td className="px-3 py-2 align-top font-mono text-sm font-bold whitespace-nowrap">
+			{children}
+		</td>
+	);
+}
+
+function Desc({ children }: { children: ReactNode }) {
+	return <td className="px-3 py-2 align-top text-sm leading-relaxed">{children}</td>;
 }
 
 function SectionRule() {
@@ -172,23 +172,39 @@ freellama run hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M "Why is the sky blue?"
 echo "Why is the sky blue?" | freellama run hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M`}
 						/>
 					</div>
-					<DocsTable
-						label="REPL commands"
-						head={["In the REPL", "Effect"]}
-						rows={[
-							["/clear", "Reset the conversation"],
-							[
-								<Fragment key="bye">
-									/bye or <Keys keys={["Ctrl", "D"]} />
-								</Fragment>,
-								"Exit the REPL",
-							],
-							[
-								<Keys key="interrupt" keys={["Ctrl", "C"]} />,
-								"Interrupt a response without exiting",
-							],
-						]}
-					/>
+					<DocsTable label="REPL commands">
+						<HeadRow>
+							<Th>In the REPL</Th>
+							<Th>Effect</Th>
+						</HeadRow>
+						<tbody>
+							<Row>
+								<Term>/clear</Term>
+								<Desc>Reset the conversation</Desc>
+							</Row>
+							<Row>
+								<Term>
+									/bye or{" "}
+									<Keys>
+										<Kbd>Ctrl</Kbd>
+										<Plus />
+										<Kbd>D</Kbd>
+									</Keys>
+								</Term>
+								<Desc>Exit the REPL</Desc>
+							</Row>
+							<Row>
+								<Term>
+									<Keys>
+										<Kbd>Ctrl</Kbd>
+										<Plus />
+										<Kbd>C</Kbd>
+									</Keys>
+								</Term>
+								<Desc>Interrupt a response without exiting</Desc>
+							</Row>
+						</tbody>
+					</DocsTable>
 				</CommandSection>
 
 				<SectionRule />
@@ -214,28 +230,44 @@ echo "Why is the sky blue?" | freellama run hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q
 					title="freellama serve [--host H] [--port P]"
 					summary="Starts an OpenAI-compatible HTTP server backed by llama.cpp. Models are loaded lazily and swapped on demand."
 				>
-					<DocsTable
-						label="serve flags"
-						head={["Flag", "Description"]}
-						rows={[
-							["--host H", "Address to bind (default 127.0.0.1)"],
-							["--port P", "Port to listen on (default 11434)"],
-						]}
-					/>
-					<DocsTable
-						label="HTTP endpoints"
-						head={["Endpoint", "Description"]}
-						rows={[
-							["GET /health", "Liveness check"],
-							["GET /v1/models", "List installed models (OpenAI format)"],
-							[
-								"POST /v1/chat/completions",
-								<Fragment key="chat">
+					<DocsTable label="serve flags">
+						<HeadRow>
+							<Th>Flag</Th>
+							<Th>Description</Th>
+						</HeadRow>
+						<tbody>
+							<Row>
+								<Term>--host H</Term>
+								<Desc>Address to bind (default 127.0.0.1)</Desc>
+							</Row>
+							<Row>
+								<Term>--port P</Term>
+								<Desc>Port to listen on (default 11434)</Desc>
+							</Row>
+						</tbody>
+					</DocsTable>
+					<DocsTable label="HTTP endpoints">
+						<HeadRow>
+							<Th>Endpoint</Th>
+							<Th>Description</Th>
+						</HeadRow>
+						<tbody>
+							<Row>
+								<Term>GET /health</Term>
+								<Desc>Liveness check</Desc>
+							</Row>
+							<Row>
+								<Term>GET /v1/models</Term>
+								<Desc>List installed models (OpenAI format)</Desc>
+							</Row>
+							<Row>
+								<Term>POST /v1/chat/completions</Term>
+								<Desc>
 									Chat completions; supports <Code>"stream": true</Code> (server-sent events)
-								</Fragment>,
-							],
-						]}
-					/>
+								</Desc>
+							</Row>
+						</tbody>
+					</DocsTable>
 					<div className="mt-6">
 						<CodeBlock
 							code={`freellama serve
@@ -251,14 +283,22 @@ curl http://127.0.0.1:11434/v1/models`}
 					title="global flags"
 					summary="Flags handled by the CLI itself, outside any command."
 				>
-					<DocsTable
-						label="Global flags"
-						head={["Flag", "Description"]}
-						rows={[
-							["--version, -v", "Print the freellama version"],
-							["help, --help, -h", "Show usage help"],
-						]}
-					/>
+					<DocsTable label="Global flags">
+						<HeadRow>
+							<Th>Flag</Th>
+							<Th>Description</Th>
+						</HeadRow>
+						<tbody>
+							<Row>
+								<Term>--version, -v</Term>
+								<Desc>Print the freellama version</Desc>
+							</Row>
+							<Row>
+								<Term>help, --help, -h</Term>
+								<Desc>Show usage help</Desc>
+							</Row>
+						</tbody>
+					</DocsTable>
 				</CommandSection>
 
 				<SectionRule />
@@ -268,40 +308,48 @@ curl http://127.0.0.1:11434/v1/models`}
 					title="environment variables"
 					summary="Configuration is environment-only — no config files."
 				>
-					<DocsTable
-						label="Environment variables"
-						head={["Variable", "Description"]}
-						rows={[
-							["FREELLAMA_HOME", "Data directory (default ~/.freellama)"],
-							[
-								"FREELLAMA_CTX",
-								"Context size passed to llama-server (default 4096)",
-							],
-							[
-								"FREELLAMA_LLAMA_VERSION",
-								<Fragment key="version">
+					<DocsTable label="Environment variables">
+						<HeadRow>
+							<Th>Variable</Th>
+							<Th>Description</Th>
+						</HeadRow>
+						<tbody>
+							<Row>
+								<Term>FREELLAMA_HOME</Term>
+								<Desc>Data directory (default ~/.freellama)</Desc>
+							</Row>
+							<Row>
+								<Term>FREELLAMA_CTX</Term>
+								<Desc>Context size passed to llama-server (default 4096)</Desc>
+							</Row>
+							<Row>
+								<Term>FREELLAMA_LLAMA_VERSION</Term>
+								<Desc>
 									Pin a llama.cpp release tag, e.g. <Code>b5900</Code> (default: latest)
-								</Fragment>,
-							],
-							[
-								"FREELLAMA_LLAMA_SERVER",
-								<Fragment key="server">
+								</Desc>
+							</Row>
+							<Row>
+								<Term>FREELLAMA_LLAMA_SERVER</Term>
+								<Desc>
 									Path to an existing <Code>llama-server</Code> binary (skips downloads)
-								</Fragment>,
-							],
-							[
-								"FREELLAMA_SERVER_ARGS",
-								<Fragment key="args">
+								</Desc>
+							</Row>
+							<Row>
+								<Term>FREELLAMA_SERVER_ARGS</Term>
+								<Desc>
 									Extra flags passed through to <Code>llama-server</Code>
-								</Fragment>,
-							],
-							[
-								"FREELLAMA_DEBUG=1",
-								"Show llama-server output for troubleshooting",
-							],
-							["HF_TOKEN", "Hugging Face token for gated model repos"],
-						]}
-					/>
+								</Desc>
+							</Row>
+							<Row>
+								<Term>FREELLAMA_DEBUG=1</Term>
+								<Desc>Show llama-server output for troubleshooting</Desc>
+							</Row>
+							<Row>
+								<Term>HF_TOKEN</Term>
+								<Desc>Hugging Face token for gated model repos</Desc>
+							</Row>
+						</tbody>
+					</DocsTable>
 				</CommandSection>
 			</div>
 		</div>

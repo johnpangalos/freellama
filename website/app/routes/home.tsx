@@ -10,7 +10,7 @@ export function meta({}: Route.MetaArgs) {
 		{
 			name: "description",
 			content:
-				"Run LLMs locally with an Ollama-style CLI and an OpenAI-compatible API — powered by llama.cpp, built with Deno, and released into the public domain.",
+				"Run LLMs locally with a simple CLI and an OpenAI-compatible API — all the power of llama.cpp with none of the setup.",
 		},
 	];
 }
@@ -25,8 +25,9 @@ const features = [
 			"freellama serve speaks the OpenAI API on localhost:11434 — point any client or SDK at it.",
 	},
 	{
-		title: "ollama-style cli",
-		body: "pull, run, list, rm, serve. If you know Ollama, you already know freellama.",
+		title: "llama.cpp made easy",
+		body:
+			"The official prebuilt llama-server, downloaded and managed for you. No toolchain, no build flags — just pull, run, serve.",
 	},
 	{
 		title: "straight from hugging face",
@@ -47,9 +48,9 @@ export default function Home() {
 					freellama<span className="text-accent">_</span>
 				</h1>
 				<p className="mt-6 max-w-2xl text-lg leading-relaxed sm:text-xl">
-					Run LLMs locally with an Ollama-style CLI and an OpenAI-compatible API — powered by{" "}
-					<span className="bg-lime px-1 font-bold">llama.cpp</span>, built with{" "}
-					<span className="bg-lime px-1 font-bold">Deno</span>, and released into the{" "}
+					All the power of <span className="bg-lime px-1 font-bold">llama.cpp</span>{" "}
+					with none of the setup — a simple CLI and an OpenAI-compatible API, built with{" "}
+					<span className="bg-lime px-1 font-bold">Deno</span> and released into the{" "}
 					<span className="bg-lime px-1 font-bold">public domain</span>.
 				</p>
 				<div className="mt-8 flex flex-wrap gap-4">

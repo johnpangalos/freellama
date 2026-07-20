@@ -1,0 +1,5 @@
+build/
+.react-router/
+.wrangler/
+worker-configuration.d.ts
+pnpm-lock.yaml

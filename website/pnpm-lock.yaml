@@ -51,6 +51,9 @@ importers:
       eslint-plugin-better-tailwindcss:
         specifier: ^4.6.1
         version: 4.7.0(eslint@10.7.0(jiti@2.7.0))(tailwindcss@4.1.17)(typescript@5.9.3)
+      prettier:
+        specifier: ^3.9.5
+        version: 3.9.5
       react-refresh:
         specifier: ^0.14.2
         version: 0.14.2

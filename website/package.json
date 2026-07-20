@@ -35,7 +35,7 @@
 		"lint": "node node_modules/.bin/eslint .",
 		"lint:fix": "node node_modules/.bin/eslint --fix .",
 		"preview": "node node_modules/.bin/vite preview",
-		"typecheck": "node node_modules/.bin/react-router typegen && node node_modules/.bin/tsc -b"
+		"typecheck": "node node_modules/.bin/wrangler types && node node_modules/.bin/react-router typegen && node node_modules/.bin/tsc -b"
 	},
 	"type": "module"
 }

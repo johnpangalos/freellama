@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+	<rect width="64" height="64" fill="#0d0d0d" />
+	<text
+		x="30"
+		y="45"
+		font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace"
+		font-size="36"
+		font-weight="900"
+		fill="#eceaf3"
+		text-anchor="middle"
+	>fll</text>
+	<rect x="45" y="49" width="13" height="7" fill="#8b2bff" />
+</svg>

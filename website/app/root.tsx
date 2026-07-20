@@ -13,6 +13,11 @@ import "./app.css";
 import { SiteFooter } from "./components/SiteFooter.tsx";
 import { SiteHeader } from "./components/SiteHeader.tsx";
 
+export const links: Route.LinksFunction = () => [
+	{ rel: "icon", href: "/favicon.ico", sizes: "32x32" },
+	{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+];
+
 export function Layout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en">

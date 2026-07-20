@@ -15,9 +15,10 @@ Ollama-style CLI + OpenAI-compatible server for running LLMs locally via llama.c
   content) that get `.map()`ed into elements — inline the elements directly, and share styling
   through small components that take `children`. Reserve `.map()` for genuinely dynamic data.
 - Keep Tailwind classes inline in the JSX — no variables/constants holding class strings; repeat the
-  string if two elements share it. Class order is enforced by eslint-plugin-better-tailwindcss
-  (`deno task lint` / `lint:fix` in `website/`); its line-wrapping rule stays off because `deno fmt`
-  owns line layout.
+  string if two elements share it. Class order and multi-line wrapping are enforced by
+  eslint-plugin-better-tailwindcss (`deno task lint` / `lint:fix` in `website/`, configured with
+  tabs/printWidth 100 to agree with `deno fmt`). After editing classes run `lint:fix`, then
+  `deno fmt`, then `lint` once more — the two converge but may need that second fix pass.
 
 ## Commits and pull requests
 

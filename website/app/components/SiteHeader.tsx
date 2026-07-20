@@ -8,7 +8,11 @@ export function SiteHeader() {
 				<Link
 					as={RouterLink}
 					to="/"
-					className="font-mono text-xl font-black tracking-tight data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue"
+					className="
+						font-mono text-xl font-black tracking-tight
+						data-focus-visible:outline-2 data-focus-visible:outline-offset-2
+						data-focus-visible:outline-blue
+					"
 				>
 					freellama<span className="text-accent">_</span>
 				</Link>
@@ -16,13 +20,23 @@ export function SiteHeader() {
 					<Link
 						as={RouterLink}
 						to="/docs"
-						className="border-2 border-transparent px-2 py-1 font-mono text-sm font-bold tracking-wide uppercase data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue data-hovered:border-ink data-hovered:bg-lime"
+						className="
+							border-2 border-transparent px-2 py-1 font-mono text-sm font-bold tracking-wide uppercase
+							data-focus-visible:outline-2 data-focus-visible:outline-offset-2
+							data-focus-visible:outline-blue
+							data-hovered:border-ink data-hovered:bg-lime
+						"
 					>
 						docs
 					</Link>
 					<Link
 						href="https://github.com/johnpangalos/freellama"
-						className="border-2 border-transparent px-2 py-1 font-mono text-sm font-bold tracking-wide uppercase data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue data-hovered:border-ink data-hovered:bg-lime"
+						className="
+							border-2 border-transparent px-2 py-1 font-mono text-sm font-bold tracking-wide uppercase
+							data-focus-visible:outline-2 data-focus-visible:outline-offset-2
+							data-focus-visible:outline-blue
+							data-hovered:border-ink data-hovered:bg-lime
+						"
 					>
 						github
 					</Link>

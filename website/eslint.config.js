@@ -21,8 +21,12 @@ export default [
 			},
 		},
 		rules: {
-			// enforce-consistent-line-wrapping stays off: deno fmt owns line layout,
-			// and the two would fight over how long class attributes wrap.
+			// Wrapped class lists live inside template literals, which deno fmt
+			// leaves alone — indent/printWidth mirror the deno fmt settings.
+			"better-tailwindcss/enforce-consistent-line-wrapping": [
+				"error",
+				{ indent: "tab", printWidth: 100 },
+			],
 			"better-tailwindcss/enforce-consistent-class-order": "error",
 			"better-tailwindcss/enforce-consistent-variant-order": "error",
 			"better-tailwindcss/no-duplicate-classes": "error",

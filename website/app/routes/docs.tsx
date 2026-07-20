@@ -18,7 +18,9 @@ export function meta({}: Route.MetaArgs) {
 
 function Kbd({ children }: { children: ReactNode }) {
 	return (
-		<kbd className="inline-block border-2 border-b-4 border-ink bg-paper px-1.5 py-0.5 font-mono text-xs font-bold">
+		<kbd className="
+			inline-block border-2 border-b-4 border-ink bg-paper px-1.5 py-0.5 font-mono text-xs font-bold
+		">
 			{children}
 		</kbd>
 	);
@@ -68,7 +70,14 @@ function Th({ children }: { children: ReactNode }) {
 }
 
 function Row({ children }: { children: ReactNode }) {
-	return <tr className="border-b-2 border-ink last:border-b-0">{children}</tr>;
+	return (
+		<tr className="
+			border-b-2 border-ink
+			last:border-b-0
+		">
+			{children}
+		</tr>
+	);
 }
 
 function Term({ children }: { children: ReactNode }) {
@@ -96,7 +105,10 @@ export default function Docs() {
 			>
 				<BreadcrumbLink
 					href="/"
-					className="underline decoration-2 underline-offset-4 hover:bg-lime"
+					className="
+						underline decoration-2 underline-offset-4
+						hover:bg-lime
+					"
 				>
 					Home
 				</BreadcrumbLink>
@@ -108,7 +120,10 @@ export default function Docs() {
 				</BreadcrumbLink>
 			</Breadcrumbs>
 
-			<h1 className="mt-6 font-mono text-4xl font-black tracking-tight uppercase sm:text-5xl">
+			<h1 className="
+				mt-6 font-mono text-4xl font-black tracking-tight uppercase
+				sm:text-5xl
+			">
 				CLI reference
 			</h1>
 			<p className="mt-4 max-w-prose text-lg leading-relaxed">

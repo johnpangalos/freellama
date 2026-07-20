@@ -31,11 +31,20 @@ export default function Home() {
 	return (
 		<div className="mx-auto max-w-4xl px-4">
 			{/* hero */}
-			<section className="py-16 sm:py-20">
-				<h1 className="font-mono text-5xl font-black tracking-tight sm:text-7xl">
+			<section className="
+				py-16
+				sm:py-20
+			">
+				<h1 className="
+					font-mono text-5xl font-black tracking-tight
+					sm:text-7xl
+				">
 					freellama<span className="text-accent">_</span>
 				</h1>
-				<p className="mt-6 max-w-2xl text-lg leading-relaxed sm:text-xl">
+				<p className="
+					mt-6 max-w-2xl text-lg leading-relaxed
+					sm:text-xl
+				">
 					All the power of <span className="bg-lime px-1 font-bold">llama.cpp</span>{" "}
 					with none of the setup — a simple CLI and an OpenAI-compatible API, built with{" "}
 					<span className="bg-lime px-1 font-bold">Deno</span> and released into the{" "}
@@ -45,14 +54,28 @@ export default function Home() {
 					<Button
 						as={RouterLink}
 						to="/docs"
-						className="border-[3px] border-ink bg-accent px-5 py-2.5 font-mono text-sm font-bold tracking-wide text-paper uppercase shadow-brutal data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue data-hovered:bg-blue data-pressed:translate-x-[5px] data-pressed:translate-y-[5px] data-pressed:shadow-none"
+						className="
+							border-[3px] border-ink bg-accent px-5 py-2.5 font-mono text-sm font-bold tracking-wide
+							text-paper uppercase shadow-brutal
+							data-focus-visible:outline-2 data-focus-visible:outline-offset-2
+							data-focus-visible:outline-blue
+							data-hovered:bg-blue
+							data-pressed:translate-x-[5px] data-pressed:translate-y-[5px] data-pressed:shadow-none
+						"
 					>
 						Read the docs
 					</Button>
 					<Button
 						as="a"
 						href="https://github.com/johnpangalos/freellama"
-						className="border-[3px] border-ink bg-paper px-5 py-2.5 font-mono text-sm font-bold tracking-wide uppercase shadow-brutal data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue data-hovered:bg-lime data-pressed:translate-x-[5px] data-pressed:translate-y-[5px] data-pressed:shadow-none"
+						className="
+							border-[3px] border-ink bg-paper px-5 py-2.5 font-mono text-sm font-bold tracking-wide
+							uppercase shadow-brutal
+							data-focus-visible:outline-2 data-focus-visible:outline-offset-2
+							data-focus-visible:outline-blue
+							data-hovered:bg-lime
+							data-pressed:translate-x-[5px] data-pressed:translate-y-[5px] data-pressed:shadow-none
+						"
 					>
 						GitHub
 					</Button>
@@ -68,13 +91,29 @@ export default function Home() {
 					<TabList className="flex" aria-label="Install methods">
 						<Tab
 							tab="script"
-							className="border-[3px] border-b-0 border-ink px-4 py-2 font-mono text-sm font-bold tracking-wide uppercase data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue data-hovered:bg-lime data-selected:bg-ink data-selected:text-paper data-selected:data-hovered:bg-ink"
+							className="
+								border-[3px] border-b-0 border-ink px-4 py-2 font-mono text-sm font-bold tracking-wide
+								uppercase
+								data-focus-visible:outline-2 data-focus-visible:outline-offset-2
+								data-focus-visible:outline-blue
+								data-hovered:bg-lime
+								data-selected:bg-ink data-selected:text-paper
+								data-selected:data-hovered:bg-ink
+							"
 						>
 							install script
 						</Tab>
 						<Tab
 							tab="source"
-							className="border-[3px] border-b-0 border-ink px-4 py-2 font-mono text-sm font-bold tracking-wide uppercase data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue data-hovered:bg-lime data-selected:bg-ink data-selected:text-paper data-selected:data-hovered:bg-ink"
+							className="
+								border-[3px] border-b-0 border-ink px-4 py-2 font-mono text-sm font-bold tracking-wide
+								uppercase
+								data-focus-visible:outline-2 data-focus-visible:outline-offset-2
+								data-focus-visible:outline-blue
+								data-hovered:bg-lime
+								data-selected:bg-ink data-selected:text-paper
+								data-selected:data-hovered:bg-ink
+							"
 						>
 							from source
 						</Tab>
@@ -92,7 +131,10 @@ export default function Home() {
 
 			{/* features */}
 			<section className="py-16" aria-label="Features">
-				<div className="grid gap-6 sm:grid-cols-2">
+				<div className="
+					grid gap-6
+					sm:grid-cols-2
+				">
 					<FeatureCard title="openai-compatible api">
 						freellama serve speaks the OpenAI API on localhost:11434 — point any client or SDK at
 						it.

@@ -17,24 +17,13 @@ if (!shebang.startsWith("#!") || PERMS.length === 0) {
 }
 
 const [task, ...rest] = Deno.args;
-// Compiling/installing against the workspace deno.json would embed the
-// website's entire npm dependency tree into the binary (~400 MB), so those
-// tasks use a minimal CLI-only config instead (kept in sync by unit test).
-const CLI_CONFIG = ["--config", "deno.compile.jsonc"];
-const NO_NM = "--node-modules-dir=none";
 const tasks: Record<string, string[]> = {
   // dev forwards trailing args, e.g. `deno task dev run <model>`.
-  dev: ["run", NO_NM, ...PERMS, CLI, ...rest],
+  dev: ["run", ...PERMS, CLI, ...rest],
   // compile forwards trailing args (e.g. `--target`, `--output` for release
   // cross-builds); with no args it defaults to `--output freellama`.
-  compile: [
-    "compile",
-    ...CLI_CONFIG,
-    ...PERMS,
-    ...(rest.length ? rest : ["--output", "freellama"]),
-    CLI,
-  ],
-  install: ["install", "--global", "--force", "--name", "freellama", ...CLI_CONFIG, ...PERMS, CLI],
+  compile: ["compile", ...PERMS, ...(rest.length ? rest : ["--output", "freellama"]), CLI],
+  install: ["install", "--global", "--force", "--name", "freellama", ...PERMS, CLI],
 };
 
 const args = tasks[task];

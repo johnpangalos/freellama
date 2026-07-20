@@ -16,10 +16,12 @@ Ollama-style CLI + OpenAI-compatible server for running LLMs locally via llama.c
   through small components that take `children`. Reserve `.map()` for genuinely dynamic data.
 - Keep Tailwind classes inline in the JSX — no variables/constants holding class strings; repeat the
   string if two elements share it. Class order and multi-line wrapping are enforced by
-  eslint-plugin-better-tailwindcss (`deno task lint` / `lint:fix` in `website/`, configured with
+  eslint-plugin-better-tailwindcss (`pnpm lint` / `pnpm lint:fix` in `website/`, configured with
   tabs/printWidth 80 to agree with the website's `deno fmt` lineWidth). After editing classes run
-  `lint:fix`, then `deno fmt`, then `lint` once more — the two converge but may need that second fix
-  pass.
+  `pnpm lint:fix`, then `deno fmt` (from `website/`), then `pnpm lint` once more — the two converge
+  but may need that second fix pass.
+- `website/` is pnpm-managed (its own `pnpm-lock.yaml`), separate from the root Deno CLI; its
+  `deno.json` exists only to configure `deno fmt` for that directory.
 
 ## Commits and pull requests
 

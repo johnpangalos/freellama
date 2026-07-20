@@ -25,17 +25,20 @@
 		"vite-tsconfig-paths": "5.1.4",
 		"wrangler": "4.88.0"
 	},
+	"pnpm": {
+		"onlyBuiltDependencies": ["esbuild", "sharp", "workerd"]
+	},
 	"private": true,
 	"scripts": {
-		"build": "node node_modules/.bin/react-router build",
-		"cf-typegen": "node node_modules/.bin/wrangler types && node node_modules/.bin/react-router typegen",
-		"check": "node node_modules/.bin/tsc && node node_modules/.bin/react-router build && node node_modules/.bin/wrangler deploy --dry-run",
-		"deploy": "node node_modules/.bin/wrangler deploy",
-		"dev": "node node_modules/.bin/react-router dev",
-		"lint": "node node_modules/.bin/eslint .",
-		"lint:fix": "node node_modules/.bin/eslint --fix .",
-		"preview": "node node_modules/.bin/vite preview",
-		"typecheck": "node node_modules/.bin/wrangler types && node node_modules/.bin/react-router typegen && node node_modules/.bin/tsc -b"
+		"build": "react-router build",
+		"cf-typegen": "wrangler types && react-router typegen",
+		"check": "tsc && react-router build && wrangler deploy --dry-run",
+		"deploy": "wrangler deploy",
+		"dev": "react-router dev",
+		"lint": "eslint .",
+		"lint:fix": "eslint --fix .",
+		"preview": "vite preview",
+		"typecheck": "wrangler types && react-router typegen && tsc -b"
 	},
 	"type": "module"
 }

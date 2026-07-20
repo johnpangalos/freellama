@@ -3,7 +3,7 @@ import betterTailwindcss from "eslint-plugin-better-tailwindcss";
 
 export default [
 	{
-		ignores: ["build/", ".react-router/", ".wrangler/", "worker-configuration.d.ts"],
+		ignores: ["build/", ".react-router/", ".wrangler/"],
 	},
 	{
 		files: ["**/*.ts", "**/*.tsx"],

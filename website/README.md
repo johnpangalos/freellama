@@ -1,24 +1,23 @@
 # freellama website
 
 Documentation site for [freellama](https://github.com/johnpangalos/freellama) — splash page plus CLI
-reference. Built with React Router 7 (SSR), [comp0](https://comp0.dev) headless components, and
-Tailwind CSS v4, deployed as a Cloudflare Worker.
+reference. Built with React Router 7, [comp0](https://comp0.dev) headless components, and Tailwind
+CSS v4. Every route is prerendered to static HTML at build time (`ssr: false` + `prerender`) and
+deployed as
+[Cloudflare Workers static assets](https://developers.cloudflare.com/workers/static-assets/) — no
+server runtime.
 
-A member of the repo's Deno workspace: deps live in `package.json`, are locked in the root
-`deno.lock`, and `deno install` (from the repo root or here) puts them in `node_modules`. Deno and
-Node versions are pinned in the root `mise.toml`.
-
-The scripts invoke the toolchain (Vite, wrangler, tsc) through `node` explicitly: running these Node
-programs under Deno's compat layer breaks CommonJS `require` resolution against the hoisted
-workspace `node_modules` store (dev-server transforms 500 and the site never hydrates). Deno stays
-the package manager and task runner; Node runs the tools.
+A standalone pnpm project, deliberately independent of the repo's Deno setup: deps live in
+`package.json` and `pnpm-lock.yaml` here, and the root `deno.json` / `deno.lock` never see them.
+Node and pnpm versions are pinned in the root `mise.toml`. The one Deno appearance is `deno fmt` as
+the formatter (config in `deno.json` here), so the whole repo shares one formatting style.
 
 Run these from `website/`:
 
 ```bash
-deno install         # install dependencies (workspace-wide)
-deno task dev        # dev server at localhost:5173
-deno task typecheck  # typegen + tsc
-deno task build      # production build
-deno task deploy     # wrangler deploy (requires Cloudflare auth: wrangler login)
+pnpm install         # install dependencies
+pnpm dev             # dev server at localhost:5173
+pnpm check           # typecheck + lint + fmt:check + build + wrangler deploy --dry-run
+pnpm run deploy      # build + wrangler deploy (requires Cloudflare auth: wrangler login)
+                     # ("run" required: plain `pnpm deploy` is a pnpm built-in)
 ```

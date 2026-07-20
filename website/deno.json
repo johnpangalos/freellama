@@ -1,11 +1,13 @@
 {
 	"fmt": {
-		"useTabs": true
+		"useTabs": true,
+		"lineWidth": 100
 	},
 	"exclude": [
 		"build",
 		".react-router",
 		".wrangler",
-		"worker-configuration.d.ts"
+		"node_modules",
+		"pnpm-lock.yaml"
 	]
 }

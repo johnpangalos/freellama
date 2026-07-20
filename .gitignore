@@ -1,5 +1,4 @@
 /freellama
 /freellama.exe
 .freellama/
-node_modules/
 /.claude/worktrees/

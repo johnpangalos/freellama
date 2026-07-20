@@ -22,5 +22,5 @@
     "lineWidth": 100,
     "exclude": ["CHANGELOG.md"]
   },
-  "exclude": ["freellama"]
+  "exclude": ["freellama", "website"]
 }

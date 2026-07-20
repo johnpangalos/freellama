@@ -1,0 +1,30 @@
+@import "tailwindcss" source(".");
+
+@theme {
+  /* palette — flat, bold, cool paper */
+  --color-paper: #eceaf3;
+  --color-ink: #0d0d0d;
+  --color-accent: #8b2bff;
+  --color-blue: #3b49ff;
+  --color-lime: #b9f227;
+  --color-code: #1a1a1a;
+
+  /* hard offset shadows — zero blur */
+  --shadow-brutal-sm: 3px 3px 0 0 var(--color-ink);
+  --shadow-brutal: 5px 5px 0 0 var(--color-ink);
+  --shadow-brutal-lg: 8px 8px 0 0 var(--color-ink);
+
+  /* system stacks only — no font CDN, terminal-authentic mono */
+  --font-sans: ui-sans-serif, system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+html,
+body {
+  @apply bg-paper text-ink;
+}
+
+::selection {
+  @apply bg-accent text-paper;
+}

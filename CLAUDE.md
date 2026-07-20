@@ -11,6 +11,16 @@ Ollama-style CLI + OpenAI-compatible server for running LLMs locally via llama.c
   Import via the `@std/*` entries in `deno.json`.
 - Prefer `@std/path` over `node:path`.
 - `deno task check` (type-check + lint + fmt) and `deno task test` must pass before committing.
+- In JSX (`website/`), write markup as raw JSX. Don't build data structures (arrays/objects of
+  content) that get `.map()`ed into elements — inline the elements directly, and share styling
+  through small components that take `children`. Reserve `.map()` for genuinely dynamic data.
+- Keep Tailwind classes inline in the JSX — no variables/constants holding class strings; repeat the
+  string if two elements share it. The website formats with prettier (2-space indent, printWidth
+  80); Tailwind class order and multi-line wrapping are enforced by eslint-plugin-better-tailwindcss
+  with matching settings. After editing classes run `pnpm lint:fix`, then `pnpm format`, then
+  `pnpm lint` once more — the two converge but may need that second fix pass.
+- `website/` is pnpm-managed (its own `pnpm-lock.yaml`), separate from the root Deno CLI, and is
+  excluded from root `deno fmt`/`deno lint`.
 
 ## Commits and pull requests
 

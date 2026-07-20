@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.4](https://github.com/johnpangalos/freellama/compare/v0.1.3...v0.1.4) (2026-07-20)
+
+
+### Features
+
+* support split (multi-part) GGUF models ([#33](https://github.com/johnpangalos/freellama/issues/33)) ([4c55f06](https://github.com/johnpangalos/freellama/commit/4c55f0693beb7c3a3ab4ec637e9a78e5a7ae6ce9))
+* **website:** prerender pages and add security headers ([#31](https://github.com/johnpangalos/freellama/issues/31)) ([5a2fc50](https://github.com/johnpangalos/freellama/commit/5a2fc50d93ede8424b60762eab86a9793e49b287))
+
+
+### Bug Fixes
+
+* **website:** sync pnpm lockfile with react-refresh 0.18.0 ([#34](https://github.com/johnpangalos/freellama/issues/34)) ([d391ad1](https://github.com/johnpangalos/freellama/commit/d391ad1b9d061d747cd397c15f5c8d9cdc5dff72))
+
 ## [0.1.3](https://github.com/johnpangalos/freellama/compare/v0.1.2...v0.1.3) (2026-07-20)
 
 

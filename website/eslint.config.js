@@ -3,7 +3,12 @@ import betterTailwindcss from "eslint-plugin-better-tailwindcss";
 
 export default [
 	{
-		ignores: ["build/", ".react-router/", ".wrangler/", "worker-configuration.d.ts"],
+		ignores: [
+			"build/",
+			".react-router/",
+			".wrangler/",
+			"worker-configuration.d.ts",
+		],
 	},
 	{
 		files: ["**/*.ts", "**/*.tsx"],
@@ -25,7 +30,7 @@ export default [
 			// leaves alone — indent/printWidth mirror the deno fmt settings.
 			"better-tailwindcss/enforce-consistent-line-wrapping": [
 				"error",
-				{ indent: "tab", printWidth: 100 },
+				{ indent: "tab", printWidth: 80 },
 			],
 			"better-tailwindcss/enforce-consistent-class-order": "error",
 			"better-tailwindcss/enforce-consistent-variant-order": "error",

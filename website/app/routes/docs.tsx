@@ -19,7 +19,8 @@ export function meta({}: Route.MetaArgs) {
 function Kbd({ children }: { children: ReactNode }) {
 	return (
 		<kbd className="
-			inline-block border-2 border-b-4 border-ink bg-paper px-1.5 py-0.5 font-mono text-xs font-bold
+			inline-block border-2 border-b-4 border-ink bg-paper px-1.5 py-0.5 font-mono
+			text-xs font-bold
 		">
 			{children}
 		</kbd>
@@ -35,10 +36,14 @@ function Plus() {
 }
 
 function Code({ children }: { children: ReactNode }) {
-	return <code className="bg-lime px-1 font-mono text-sm font-bold">{children}</code>;
+	return (
+		<code className="bg-lime px-1 font-mono text-sm font-bold">{children}</code>
+	);
 }
 
-function DocsTable({ label, children }: { label: string; children: ReactNode }) {
+function DocsTable(
+	{ label, children }: { label: string; children: ReactNode },
+) {
 	return (
 		<div className="mt-6 overflow-x-auto">
 			<table
@@ -63,7 +68,9 @@ function HeadRow({ children }: { children: ReactNode }) {
 
 function Th({ children }: { children: ReactNode }) {
 	return (
-		<th className="px-3 py-2 font-mono text-xs font-bold tracking-widest uppercase">
+		<th className="
+			px-3 py-2 font-mono text-xs font-bold tracking-widest uppercase
+		">
 			{children}
 		</th>
 	);
@@ -82,14 +89,18 @@ function Row({ children }: { children: ReactNode }) {
 
 function Term({ children }: { children: ReactNode }) {
 	return (
-		<td className="px-3 py-2 align-top font-mono text-sm font-bold whitespace-nowrap">
+		<td className="
+			px-3 py-2 align-top font-mono text-sm font-bold whitespace-nowrap
+		">
 			{children}
 		</td>
 	);
 }
 
 function Desc({ children }: { children: ReactNode }) {
-	return <td className="px-3 py-2 align-top text-sm leading-relaxed">{children}</td>;
+	return (
+		<td className="px-3 py-2 align-top text-sm leading-relaxed">{children}</td>
+	);
 }
 
 function SectionRule() {
@@ -101,7 +112,9 @@ export default function Docs() {
 		<div className="mx-auto max-w-4xl px-4 py-10">
 			<Breadcrumbs
 				aria-label="Breadcrumbs"
-				className="flex items-center gap-2 font-mono text-xs tracking-widest uppercase"
+				className="
+					flex items-center gap-2 font-mono text-xs tracking-widest uppercase
+				"
 			>
 				<BreadcrumbLink
 					href="/"
@@ -127,8 +140,10 @@ export default function Docs() {
 				CLI reference
 			</h1>
 			<p className="mt-4 max-w-prose text-lg leading-relaxed">
-				Everything the <Code>freellama</Code> binary can do. Model references use the form{" "}
-				<Code>hf:user/repo:QUANT</Code> or <Code>hf:user/repo/file.gguf</Code>{" "}
+				Everything the <Code>freellama</Code>{" "}
+				binary can do. Model references use the form{" "}
+				<Code>hf:user/repo:QUANT</Code> or <Code>hf:user/repo/file.gguf</Code>
+				{" "}
 				and download straight from Hugging Face.
 			</p>
 
@@ -278,7 +293,8 @@ echo "Why is the sky blue?" | freellama run hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q
 							<Row>
 								<Term>POST /v1/chat/completions</Term>
 								<Desc>
-									Chat completions; supports <Code>"stream": true</Code> (server-sent events)
+									Chat completions; supports <Code>"stream": true</Code>{" "}
+									(server-sent events)
 								</Desc>
 							</Row>
 						</tbody>
@@ -340,13 +356,15 @@ curl http://127.0.0.1:11434/v1/models`}
 							<Row>
 								<Term>FREELLAMA_LLAMA_VERSION</Term>
 								<Desc>
-									Pin a llama.cpp release tag, e.g. <Code>b5900</Code> (default: latest)
+									Pin a llama.cpp release tag, e.g. <Code>b5900</Code>{" "}
+									(default: latest)
 								</Desc>
 							</Row>
 							<Row>
 								<Term>FREELLAMA_LLAMA_SERVER</Term>
 								<Desc>
-									Path to an existing <Code>llama-server</Code> binary (skips downloads)
+									Path to an existing <Code>llama-server</Code>{" "}
+									binary (skips downloads)
 								</Desc>
 							</Row>
 							<Row>

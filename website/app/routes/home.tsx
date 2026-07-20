@@ -16,7 +16,9 @@ export function meta({}: Route.MetaArgs) {
 	];
 }
 
-function FeatureCard({ title, children }: { title: string; children: ReactNode }) {
+function FeatureCard(
+	{ title, children }: { title: string; children: ReactNode },
+) {
 	return (
 		<div className="border-[3px] border-ink bg-paper p-5 shadow-brutal">
 			<h3 className="font-mono text-base font-black tracking-tight uppercase">
@@ -45,9 +47,11 @@ export default function Home() {
 					mt-6 max-w-2xl text-lg leading-relaxed
 					sm:text-xl
 				">
-					All the power of <span className="bg-lime px-1 font-bold">llama.cpp</span>{" "}
-					with none of the setup — a simple CLI and an OpenAI-compatible API, built with{" "}
-					<span className="bg-lime px-1 font-bold">Deno</span> and released into the{" "}
+					All the power of{" "}
+					<span className="bg-lime px-1 font-bold">llama.cpp</span>{" "}
+					with none of the setup — a simple CLI and an OpenAI-compatible API,
+					built with <span className="bg-lime px-1 font-bold">Deno</span>{" "}
+					and released into the{" "}
 					<span className="bg-lime px-1 font-bold">public domain</span>.
 				</p>
 				<div className="mt-8 flex flex-wrap gap-4">
@@ -55,12 +59,13 @@ export default function Home() {
 						as={RouterLink}
 						to="/docs"
 						className="
-							border-[3px] border-ink bg-accent px-5 py-2.5 font-mono text-sm font-bold tracking-wide
-							text-paper uppercase shadow-brutal
+							border-[3px] border-ink bg-accent px-5 py-2.5 font-mono text-sm font-bold
+							tracking-wide text-paper uppercase shadow-brutal
 							data-focus-visible:outline-2 data-focus-visible:outline-offset-2
 							data-focus-visible:outline-blue
 							data-hovered:bg-blue
-							data-pressed:translate-x-[5px] data-pressed:translate-y-[5px] data-pressed:shadow-none
+							data-pressed:translate-x-[5px] data-pressed:translate-y-[5px]
+							data-pressed:shadow-none
 						"
 					>
 						Read the docs
@@ -69,12 +74,13 @@ export default function Home() {
 						as="a"
 						href="https://github.com/johnpangalos/freellama"
 						className="
-							border-[3px] border-ink bg-paper px-5 py-2.5 font-mono text-sm font-bold tracking-wide
-							uppercase shadow-brutal
+							border-[3px] border-ink bg-paper px-5 py-2.5 font-mono text-sm font-bold
+							tracking-wide uppercase shadow-brutal
 							data-focus-visible:outline-2 data-focus-visible:outline-offset-2
 							data-focus-visible:outline-blue
 							data-hovered:bg-lime
-							data-pressed:translate-x-[5px] data-pressed:translate-y-[5px] data-pressed:shadow-none
+							data-pressed:translate-x-[5px] data-pressed:translate-y-[5px]
+							data-pressed:shadow-none
 						"
 					>
 						GitHub
@@ -92,8 +98,8 @@ export default function Home() {
 						<Tab
 							tab="script"
 							className="
-								border-[3px] border-b-0 border-ink px-4 py-2 font-mono text-sm font-bold tracking-wide
-								uppercase
+								border-[3px] border-b-0 border-ink px-4 py-2 font-mono text-sm font-bold
+								tracking-wide uppercase
 								data-focus-visible:outline-2 data-focus-visible:outline-offset-2
 								data-focus-visible:outline-blue
 								data-hovered:bg-lime
@@ -106,8 +112,8 @@ export default function Home() {
 						<Tab
 							tab="source"
 							className="
-								border-[3px] border-b-0 border-ink px-4 py-2 font-mono text-sm font-bold tracking-wide
-								uppercase
+								border-[3px] border-b-0 border-ink px-4 py-2 font-mono text-sm font-bold
+								tracking-wide uppercase
 								data-focus-visible:outline-2 data-focus-visible:outline-offset-2
 								data-focus-visible:outline-blue
 								data-hovered:bg-lime
@@ -136,15 +142,16 @@ export default function Home() {
 					sm:grid-cols-2
 				">
 					<FeatureCard title="openai-compatible api">
-						freellama serve speaks the OpenAI API on localhost:11434 — point any client or SDK at
-						it.
+						freellama serve speaks the OpenAI API on localhost:11434 — point any
+						client or SDK at it.
 					</FeatureCard>
 					<FeatureCard title="llama.cpp made easy">
-						The official prebuilt llama-server, downloaded and managed for you. No toolchain, no
-						build flags — just pull, run, serve.
+						The official prebuilt llama-server, downloaded and managed for you.
+						No toolchain, no build flags — just pull, run, serve.
 					</FeatureCard>
 					<FeatureCard title="straight from hugging face">
-						Models are plain GGUF files pulled directly from Hugging Face. No registry, no account.
+						Models are plain GGUF files pulled directly from Hugging Face. No
+						registry, no account.
 					</FeatureCard>
 					<FeatureCard title="public domain">
 						Released under the Unlicense. No telemetry, no tracking, no strings.

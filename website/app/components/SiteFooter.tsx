@@ -5,10 +5,12 @@ export function SiteFooter() {
 		<footer className="mt-16">
 			<Separator className="block border-t-[3px] border-ink" />
 			<div className="
-				mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-6 font-mono text-xs
-				tracking-wide uppercase
+				mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4
+				py-6 font-mono text-xs tracking-wide uppercase
 			">
-				<p>Public domain (Unlicense). No registry. No accounts. No telemetry.</p>
+				<p>
+					Public domain (Unlicense). No registry. No accounts. No telemetry.
+				</p>
 				<Link
 					href="https://github.com/johnpangalos/freellama"
 					className="

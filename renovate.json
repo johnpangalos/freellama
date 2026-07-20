@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices"
+  ],
+  "semanticCommits": "enabled",
+  "minimumReleaseAge": "3 days",
+  "packageRules": [
+    {
+      "description": "One grouped PR for everything non-major, automerged once CI is green.",
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "lockFileMaintenance"],
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-minor-patch",
+      "automerge": true
+    },
+    {
+      "description": "Majors get their own PR and a human — they can change CLI behaviour.",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    }
+  ]
+}

@@ -16,13 +16,10 @@ export function meta({}: Route.MetaArgs) {
 	];
 }
 
-const tabClass =
-	"border-[3px] border-ink border-b-0 px-4 py-2 font-mono text-sm font-bold uppercase tracking-wide data-selected:bg-ink data-selected:text-paper data-hovered:bg-lime data-selected:data-hovered:bg-ink data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue";
-
 function FeatureCard({ title, children }: { title: string; children: ReactNode }) {
 	return (
 		<div className="border-[3px] border-ink bg-paper p-5 shadow-brutal">
-			<h3 className="font-mono text-base font-black uppercase tracking-tight">
+			<h3 className="font-mono text-base font-black tracking-tight uppercase">
 				{title}
 			</h3>
 			<p className="mt-2 leading-relaxed">{children}</p>
@@ -48,14 +45,14 @@ export default function Home() {
 					<Button
 						as={RouterLink}
 						to="/docs"
-						className="border-[3px] border-ink bg-accent px-5 py-2.5 font-mono text-sm font-bold uppercase tracking-wide text-paper shadow-brutal data-hovered:bg-blue data-pressed:translate-x-[5px] data-pressed:translate-y-[5px] data-pressed:shadow-none data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue"
+						className="border-[3px] border-ink bg-accent px-5 py-2.5 font-mono text-sm font-bold tracking-wide text-paper uppercase shadow-brutal data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue data-hovered:bg-blue data-pressed:translate-x-[5px] data-pressed:translate-y-[5px] data-pressed:shadow-none"
 					>
 						Read the docs
 					</Button>
 					<Button
 						as="a"
 						href="https://github.com/johnpangalos/freellama"
-						className="border-[3px] border-ink bg-paper px-5 py-2.5 font-mono text-sm font-bold uppercase tracking-wide shadow-brutal data-hovered:bg-lime data-pressed:translate-x-[5px] data-pressed:translate-y-[5px] data-pressed:shadow-none data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue"
+						className="border-[3px] border-ink bg-paper px-5 py-2.5 font-mono text-sm font-bold tracking-wide uppercase shadow-brutal data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue data-hovered:bg-lime data-pressed:translate-x-[5px] data-pressed:translate-y-[5px] data-pressed:shadow-none"
 					>
 						GitHub
 					</Button>
@@ -64,15 +61,21 @@ export default function Home() {
 
 			{/* install */}
 			<section aria-label="Install">
-				<h2 className="mb-4 font-mono text-2xl font-black uppercase tracking-tight">
+				<h2 className="mb-4 font-mono text-2xl font-black tracking-tight uppercase">
 					Install
 				</h2>
 				<Tabs defaultValue="script">
 					<TabList className="flex" aria-label="Install methods">
-						<Tab tab="script" className={tabClass}>
+						<Tab
+							tab="script"
+							className="border-[3px] border-b-0 border-ink px-4 py-2 font-mono text-sm font-bold tracking-wide uppercase data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue data-hovered:bg-lime data-selected:bg-ink data-selected:text-paper data-selected:data-hovered:bg-ink"
+						>
 							install script
 						</Tab>
-						<Tab tab="source" className={tabClass}>
+						<Tab
+							tab="source"
+							className="border-[3px] border-b-0 border-ink px-4 py-2 font-mono text-sm font-bold tracking-wide uppercase data-focus-visible:outline-2 data-focus-visible:outline-offset-2 data-focus-visible:outline-blue data-hovered:bg-lime data-selected:bg-ink data-selected:text-paper data-selected:data-hovered:bg-ink"
+						>
 							from source
 						</Tab>
 					</TabList>
@@ -109,7 +112,7 @@ export default function Home() {
 
 			{/* quickstart */}
 			<section aria-label="Quick start">
-				<h2 className="mb-4 font-mono text-2xl font-black uppercase tracking-tight">
+				<h2 className="mb-4 font-mono text-2xl font-black tracking-tight uppercase">
 					Quick start
 				</h2>
 				<CodeBlock

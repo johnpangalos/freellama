@@ -15,6 +15,9 @@
 		"@types/node": "24.10.1",
 		"@types/react": "19.2.7",
 		"@types/react-dom": "19.2.3",
+		"@typescript-eslint/parser": "^8.64.0",
+		"eslint": "^10.7.0",
+		"eslint-plugin-better-tailwindcss": "^4.6.1",
 		"react-refresh": "^0.14.2",
 		"tailwindcss": "4.1.17",
 		"typescript": "5.9.3",
@@ -29,6 +32,8 @@
 		"check": "node node_modules/.bin/tsc && node node_modules/.bin/react-router build && node node_modules/.bin/wrangler deploy --dry-run",
 		"deploy": "node node_modules/.bin/wrangler deploy",
 		"dev": "node node_modules/.bin/react-router dev",
+		"lint": "node node_modules/.bin/eslint .",
+		"lint:fix": "node node_modules/.bin/eslint --fix .",
 		"preview": "node node_modules/.bin/vite preview",
 		"typecheck": "node node_modules/.bin/react-router typegen && node node_modules/.bin/tsc -b"
 	},

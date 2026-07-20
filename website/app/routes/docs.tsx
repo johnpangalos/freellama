@@ -61,7 +61,7 @@ function HeadRow({ children }: { children: ReactNode }) {
 
 function Th({ children }: { children: ReactNode }) {
 	return (
-		<th className="px-3 py-2 font-mono text-xs font-bold uppercase tracking-widest">
+		<th className="px-3 py-2 font-mono text-xs font-bold tracking-widest uppercase">
 			{children}
 		</th>
 	);
@@ -92,7 +92,7 @@ export default function Docs() {
 		<div className="mx-auto max-w-4xl px-4 py-10">
 			<Breadcrumbs
 				aria-label="Breadcrumbs"
-				className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest"
+				className="flex items-center gap-2 font-mono text-xs tracking-widest uppercase"
 			>
 				<BreadcrumbLink
 					href="/"
@@ -108,7 +108,7 @@ export default function Docs() {
 				</BreadcrumbLink>
 			</Breadcrumbs>
 
-			<h1 className="mt-6 font-mono text-4xl font-black uppercase tracking-tight sm:text-5xl">
+			<h1 className="mt-6 font-mono text-4xl font-black tracking-tight uppercase sm:text-5xl">
 				CLI reference
 			</h1>
 			<p className="mt-4 max-w-prose text-lg leading-relaxed">

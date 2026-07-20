@@ -1,0 +1,4 @@
+{
+	"nodeModulesDir": "auto",
+	"allowScripts": ["npm:sharp", "npm:workerd"]
+}

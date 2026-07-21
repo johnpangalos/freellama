@@ -1,4 +1,4 @@
 [tools]
 deno = "2.9.3"
 node = "24"
-pnpm = "10"
+pnpm = "11"

@@ -1,0 +1,13 @@
+{
+  "nodeModulesDir": "auto",
+  "tasks": {
+    "dev": "deno run -A npm:astro dev",
+    "build": "deno run -A npm:astro build",
+    "preview": "deno run -A npm:astro preview",
+    "astro": "deno run -A npm:astro",
+    "check": "deno run -A npm:astro sync && deno run -A npm:astro check && deno lint && deno fmt --check",
+    "fmt": "deno fmt",
+    "lint": "deno lint"
+  },
+  "exclude": ["dist", ".astro", "node_modules"]
+}

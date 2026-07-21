@@ -1,17 +1,12 @@
-import { useRef, useState } from "react";
 import { Button } from "@comp0/react";
+import { useRef, useState } from "react";
 
 type CodeBlockProps = {
   code: string;
   label?: string;
-  className?: string;
 };
 
-export function CodeBlock({
-  code,
-  label = "sh",
-  className = "",
-}: CodeBlockProps) {
+export function CodeBlock({ code, label = "sh" }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
   const timeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -24,18 +19,11 @@ export function CodeBlock({
   }
 
   return (
-    <div
-      className={`
-        border-[3px] border-ink bg-code shadow-brutal
-        ${className}
-      `}
-    >
-      <div
-        className="
+    <div className="border-[3px] border-ink bg-code shadow-brutal">
+      <div className="
           flex items-center justify-between border-b-[3px] border-ink bg-lime
           px-3 py-1.5
-        "
-      >
+        ">
         <span className="font-mono text-xs font-bold tracking-widest uppercase">
           {label}
         </span>

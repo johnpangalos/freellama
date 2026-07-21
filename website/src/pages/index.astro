@@ -1,0 +1,124 @@
+---
+import { CodeBlock } from "../components/CodeBlock.tsx";
+import FeatureCard from "../components/FeatureCard.astro";
+import { InstallTabs } from "../components/InstallTabs.tsx";
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout
+  title="freellama — run LLMs locally"
+  description="Run LLMs locally with a simple CLI and an OpenAI-compatible API — all the power of llama.cpp with none of the setup."
+>
+  <div class="mx-auto max-w-4xl px-4">
+    {/* hero */}
+    <section
+      class="
+        py-16
+        sm:py-20
+      "
+    >
+      <h1
+        class="
+          font-mono text-5xl font-black tracking-tight
+          sm:text-7xl
+        "
+      >
+        freellama<span class="text-accent">_</span>
+      </h1>
+      <p
+        class="
+          mt-6 max-w-2xl text-lg leading-relaxed
+          sm:text-xl
+        "
+      >
+        All the power of <span class="bg-lime px-1 font-bold">llama.cpp</span>
+        with none of the setup — a simple CLI and an OpenAI-compatible API,
+        built with <span class="bg-lime px-1 font-bold">Deno</span> and released
+        into the <span class="bg-lime px-1 font-bold">public domain</span>.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-4">
+        <a
+          href="/docs"
+          class="
+            border-[3px] border-ink bg-accent px-5 py-2.5 font-mono text-sm
+            font-bold tracking-wide text-paper uppercase shadow-brutal
+            hover:bg-blue
+            focus-visible:outline-2 focus-visible:outline-offset-2
+            focus-visible:outline-blue
+            active:translate-x-[5px] active:translate-y-[5px]
+            active:shadow-none
+          "
+        >
+          Read the docs
+        </a>
+        <a
+          href="https://github.com/johnpangalos/freellama"
+          class="
+            border-[3px] border-ink bg-paper px-5 py-2.5 font-mono text-sm
+            font-bold tracking-wide uppercase shadow-brutal
+            hover:bg-lime
+            focus-visible:outline-2 focus-visible:outline-offset-2
+            focus-visible:outline-blue
+            active:translate-x-[5px] active:translate-y-[5px]
+            active:shadow-none
+          "
+        >
+          GitHub
+        </a>
+      </div>
+    </section>
+
+    {/* install */}
+    <section aria-label="Install">
+      <h2
+        class="
+          mb-4 font-mono text-2xl font-black tracking-tight uppercase
+        "
+      >
+        Install
+      </h2>
+      <InstallTabs client:load />
+    </section>
+
+    {/* features */}
+    <section class="py-16" aria-label="Features">
+      <div
+        class="
+          grid gap-6
+          sm:grid-cols-2
+        "
+      >
+        <FeatureCard title="openai-compatible api">
+          freellama serve speaks the OpenAI API on localhost:11434 — point any
+          client or SDK at it.
+        </FeatureCard>
+        <FeatureCard title="llama.cpp made easy">
+          The official prebuilt llama-server, downloaded and managed for you. No
+          toolchain, no build flags — just pull, run, serve.
+        </FeatureCard>
+        <FeatureCard title="straight from hugging face">
+          Models are plain GGUF files pulled directly from Hugging Face. No
+          registry, no account.
+        </FeatureCard>
+        <FeatureCard title="public domain">
+          Released under the Unlicense. No telemetry, no tracking, no strings.
+        </FeatureCard>
+      </div>
+    </section>
+
+    {/* quickstart */}
+    <section aria-label="Quick start">
+      <h2
+        class="
+          mb-4 font-mono text-2xl font-black tracking-tight uppercase
+        "
+      >
+        Quick start
+      </h2>
+      <CodeBlock
+        client:idle
+        code={`# download a small model (~400 MB) from Hugging Face\nfreellama pull hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M\n\n# chat with it\nfreellama run hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M`}
+      />
+    </section>
+  </div>
+</Layout>

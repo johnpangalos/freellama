@@ -1,0 +1,16 @@
+---
+type Props = {
+  label: string;
+};
+
+const { label } = Astro.props;
+---
+
+<div class="mt-6 overflow-x-auto">
+  <table
+    aria-label={label}
+    class="w-full border-[3px] border-ink shadow-brutal-sm"
+  >
+    <slot />
+  </table>
+</div>

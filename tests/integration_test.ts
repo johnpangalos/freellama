@@ -5,9 +5,10 @@
 import { assert, assertEquals } from "@std/assert";
 import { poll } from "@std/async";
 import { fromFileUrl, join } from "@std/path";
-import { startLlamaServer } from "../src/lib/runner.ts";
+import { readyTimeoutSeconds, startLlamaServer } from "../src/lib/runner.ts";
 import { streamChat } from "../src/lib/openai.ts";
 import { pullModel } from "../src/commands/pull.ts";
+import { downloadGguf, localPathFor } from "../src/lib/hf.ts";
 import { getModel, removeModel } from "../src/lib/store.ts";
 
 const projectRoot = fromFileUrl(new URL("..", import.meta.url));
@@ -94,6 +95,75 @@ Deno.test("pull downloads every part of a split gguf and rm removes them all", a
     if (prevHome === undefined) Deno.env.delete("FREELLAMA_HOME");
     else Deno.env.set("FREELLAMA_HOME", prevHome);
     await Deno.remove(home, { recursive: true });
+  }
+});
+
+Deno.test("downloadGguf resumes an interrupted download with a Range request", async () => {
+  const home = await Deno.makeTempDir({ prefix: "freellama-resume-" });
+  const prevHome = Deno.env.get("FREELLAMA_HOME");
+  Deno.env.set("FREELLAMA_HOME", home);
+  const realFetch = globalThis.fetch;
+
+  const full = new TextEncoder().encode("0123456789abcdef");
+  let sawRange: string | null = null;
+  globalThis.fetch = ((input: URL | Request | string, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (!url.includes("resolve/main/")) return realFetch(input, init);
+    sawRange = new Headers(init?.headers).get("Range");
+    const match = sawRange?.match(/^bytes=(\d+)-$/);
+    if (match) {
+      return Promise.resolve(
+        new Response(full.slice(Number(match[1])), {
+          status: 206,
+          headers: { "Content-Range": `bytes ${match[1]}-15/16` },
+        }),
+      );
+    }
+    return Promise.resolve(new Response(full));
+  }) as typeof fetch;
+
+  try {
+    // Leftover partial from an interrupted download: the first 6 bytes.
+    await Deno.mkdir(join(home, "models"), { recursive: true });
+    const dest = localPathFor("user/repo", "m.gguf");
+    await Deno.writeFile(dest + ".partial", full.slice(0, 6));
+
+    const path = await downloadGguf("user/repo", "m.gguf", full.byteLength);
+    assertEquals(sawRange, "bytes=6-");
+    assertEquals(await Deno.readTextFile(path), "0123456789abcdef");
+
+    // A server that ignores Range restarts the download from scratch.
+    await Deno.remove(dest);
+    await Deno.writeFile(dest + ".partial", full.slice(0, 6));
+    globalThis.fetch = ((input: URL | Request | string, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (!url.includes("resolve/main/")) return realFetch(input, init);
+      return Promise.resolve(new Response(full));
+    }) as typeof fetch;
+    const restarted = await downloadGguf("user/repo", "m.gguf", full.byteLength);
+    assertEquals(await Deno.readTextFile(restarted), "0123456789abcdef");
+  } finally {
+    globalThis.fetch = realFetch;
+    if (prevHome === undefined) Deno.env.delete("FREELLAMA_HOME");
+    else Deno.env.set("FREELLAMA_HOME", prevHome);
+    await Deno.remove(home, { recursive: true });
+  }
+});
+
+Deno.test("readyTimeoutSeconds honors FREELLAMA_READY_TIMEOUT", () => {
+  const prev = Deno.env.get("FREELLAMA_READY_TIMEOUT");
+  try {
+    Deno.env.delete("FREELLAMA_READY_TIMEOUT");
+    assertEquals(readyTimeoutSeconds(), 180);
+    Deno.env.set("FREELLAMA_READY_TIMEOUT", "900");
+    assertEquals(readyTimeoutSeconds(), 900);
+    Deno.env.set("FREELLAMA_READY_TIMEOUT", "not-a-number");
+    assertEquals(readyTimeoutSeconds(), 180);
+    Deno.env.set("FREELLAMA_READY_TIMEOUT", "-5");
+    assertEquals(readyTimeoutSeconds(), 180);
+  } finally {
+    if (prev === undefined) Deno.env.delete("FREELLAMA_READY_TIMEOUT");
+    else Deno.env.set("FREELLAMA_READY_TIMEOUT", prev);
   }
 });
 

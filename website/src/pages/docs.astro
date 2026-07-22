@@ -1,0 +1,297 @@
+---
+import { CodeBlock } from "../components/CodeBlock.tsx";
+import CommandSection from "../components/CommandSection.astro";
+import Code from "../components/docs/Code.astro";
+import Desc from "../components/docs/Desc.astro";
+import DocsTable from "../components/docs/DocsTable.astro";
+import HeadRow from "../components/docs/HeadRow.astro";
+import Kbd from "../components/docs/Kbd.astro";
+import Row from "../components/docs/Row.astro";
+import Term from "../components/docs/Term.astro";
+import Th from "../components/docs/Th.astro";
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout
+  title="CLI reference — freellama"
+  description="Reference for the freellama CLI: pull, run, list, rm, serve, global flags, and environment variables."
+>
+  <div class="mx-auto max-w-4xl px-4 py-10">
+    <nav
+      aria-label="Breadcrumbs"
+      class="
+        flex items-center gap-2 font-mono text-xs tracking-widest uppercase
+      "
+    >
+      <a
+        href="/"
+        class="
+          underline decoration-2 underline-offset-4
+          hover:bg-lime
+        "
+      >
+        Home
+      </a>
+      <span aria-hidden="true" class="font-bold text-accent">/</span>
+      <a href="/docs" aria-current="page" class="font-bold">Docs</a>
+    </nav>
+
+    <h1
+      class="
+        mt-6 font-mono text-4xl font-black tracking-tight uppercase
+        sm:text-5xl
+      "
+    >
+      CLI reference
+    </h1>
+    <p class="mt-4 max-w-prose text-lg leading-relaxed">
+      Everything the <Code>freellama</Code> binary can do. Model references use
+      the form <Code>hf:user/repo:QUANT</Code> or
+      <Code>hf:user/repo/file.gguf</Code> and download straight from Hugging
+      Face.
+    </p>
+
+    <div class="mt-8">
+      <CodeBlock
+        client:idle
+        label="usage"
+        code={`freellama <command> [args]
+
+  pull <model>            Download a GGUF model from Hugging Face
+  run <model> [prompt]    Chat with a model (REPL, or one-shot with a prompt)
+  list | ls               List installed models
+  rm <model>              Remove an installed model
+  serve [--host H] [--port P]
+                          Start an OpenAI-compatible server (default 127.0.0.1:11434)`}
+      />
+    </div>
+
+    <div class="mt-8">
+      <hr class="block border-t-[3px] border-ink" />
+
+      <CommandSection
+        id="pull"
+        title="freellama pull <model>"
+        summary="Downloads a GGUF model from Hugging Face and stores it locally. Reference a quantization from a repo, or a specific .gguf file."
+      >
+        <div class="mt-4">
+          <CodeBlock
+            client:idle
+            code={`# by quantization
+freellama pull hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M
+
+# by exact file
+freellama pull hf:user/repo/file.gguf`}
+          />
+        </div>
+        <p class="mt-4 max-w-prose text-sm leading-relaxed">
+          Set <Code>HF_TOKEN</Code> to access gated model repos.
+        </p>
+      </CommandSection>
+
+      <hr class="block border-t-[3px] border-ink" />
+
+      <CommandSection
+        id="run"
+        title="freellama run <model> [prompt]"
+        summary="Starts an interactive streaming chat REPL, or runs a one-shot completion when you pass a prompt. Piping stdin also works: the reply is written to stdout with no prompts."
+      >
+        <div class="mt-4">
+          <CodeBlock
+            client:idle
+            code={`# interactive REPL
+freellama run hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M
+
+# one-shot
+freellama run hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M "Why is the sky blue?"
+
+# piped stdin
+echo "Why is the sky blue?" | freellama run hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M`}
+          />
+        </div>
+        <DocsTable label="REPL commands">
+          <HeadRow>
+            <Th>In the REPL</Th>
+            <Th>Effect</Th>
+          </HeadRow>
+          <tbody>
+            <Row>
+              <Term>/clear</Term>
+              <Desc>Reset the conversation</Desc>
+            </Row>
+            <Row>
+              <Term>
+                /bye or
+                <span class="inline-flex items-center gap-1.5">
+                  <Kbd>Ctrl</Kbd>
+                  <span aria-hidden="true">+</span>
+                  <Kbd>D</Kbd>
+                </span>
+              </Term>
+              <Desc>Exit the REPL</Desc>
+            </Row>
+            <Row>
+              <Term>
+                <span class="inline-flex items-center gap-1.5">
+                  <Kbd>Ctrl</Kbd>
+                  <span aria-hidden="true">+</span>
+                  <Kbd>C</Kbd>
+                </span>
+              </Term>
+              <Desc>Interrupt a response without exiting</Desc>
+            </Row>
+          </tbody>
+        </DocsTable>
+      </CommandSection>
+
+      <hr class="block border-t-[3px] border-ink" />
+
+      <CommandSection
+        id="list"
+        title="freellama list | ls"
+        summary="Lists the models installed in your local store."
+      />
+
+      <hr class="block border-t-[3px] border-ink" />
+
+      <CommandSection
+        id="rm"
+        title="freellama rm <model>"
+        summary="Removes an installed model from the local store."
+      />
+
+      <hr class="block border-t-[3px] border-ink" />
+
+      <CommandSection
+        id="serve"
+        title="freellama serve [--host H] [--port P]"
+        summary="Starts an OpenAI-compatible HTTP server backed by llama.cpp. Models are loaded lazily and swapped on demand."
+      >
+        <DocsTable label="serve flags">
+          <HeadRow>
+            <Th>Flag</Th>
+            <Th>Description</Th>
+          </HeadRow>
+          <tbody>
+            <Row>
+              <Term>--host H</Term>
+              <Desc>Address to bind (default 127.0.0.1)</Desc>
+            </Row>
+            <Row>
+              <Term>--port P</Term>
+              <Desc>Port to listen on (default 11434)</Desc>
+            </Row>
+          </tbody>
+        </DocsTable>
+        <DocsTable label="HTTP endpoints">
+          <HeadRow>
+            <Th>Endpoint</Th>
+            <Th>Description</Th>
+          </HeadRow>
+          <tbody>
+            <Row>
+              <Term>GET /health</Term>
+              <Desc>Liveness check</Desc>
+            </Row>
+            <Row>
+              <Term>GET /v1/models</Term>
+              <Desc>List installed models (OpenAI format)</Desc>
+            </Row>
+            <Row>
+              <Term>POST /v1/chat/completions</Term>
+              <Desc>
+                Chat completions; supports <Code>"stream": true</Code>
+                (server-sent events)
+              </Desc>
+            </Row>
+          </tbody>
+        </DocsTable>
+        <div class="mt-6">
+          <CodeBlock
+            client:idle
+            code={`freellama serve
+curl http://127.0.0.1:11434/v1/models`}
+          />
+        </div>
+      </CommandSection>
+
+      <hr class="block border-t-[3px] border-ink" />
+
+      <CommandSection
+        id="global-flags"
+        title="global flags"
+        summary="Flags handled by the CLI itself, outside any command."
+      >
+        <DocsTable label="Global flags">
+          <HeadRow>
+            <Th>Flag</Th>
+            <Th>Description</Th>
+          </HeadRow>
+          <tbody>
+            <Row>
+              <Term>--version, -v</Term>
+              <Desc>Print the freellama version</Desc>
+            </Row>
+            <Row>
+              <Term>help, --help, -h</Term>
+              <Desc>Show usage help</Desc>
+            </Row>
+          </tbody>
+        </DocsTable>
+      </CommandSection>
+
+      <hr class="block border-t-[3px] border-ink" />
+
+      <CommandSection
+        id="environment"
+        title="environment variables"
+        summary="Configuration is environment-only — no config files."
+      >
+        <DocsTable label="Environment variables">
+          <HeadRow>
+            <Th>Variable</Th>
+            <Th>Description</Th>
+          </HeadRow>
+          <tbody>
+            <Row>
+              <Term>FREELLAMA_HOME</Term>
+              <Desc>Data directory (default ~/.freellama)</Desc>
+            </Row>
+            <Row>
+              <Term>FREELLAMA_CTX</Term>
+              <Desc>Context size passed to llama-server (default 4096)</Desc>
+            </Row>
+            <Row>
+              <Term>FREELLAMA_LLAMA_VERSION</Term>
+              <Desc>
+                Pin a llama.cpp release tag, e.g. <Code>b5900</Code> (default:
+                latest)
+              </Desc>
+            </Row>
+            <Row>
+              <Term>FREELLAMA_LLAMA_SERVER</Term>
+              <Desc>
+                Path to an existing <Code>llama-server</Code> binary (skips
+                downloads)
+              </Desc>
+            </Row>
+            <Row>
+              <Term>FREELLAMA_SERVER_ARGS</Term>
+              <Desc>
+                Extra flags passed through to <Code>llama-server</Code>
+              </Desc>
+            </Row>
+            <Row>
+              <Term>FREELLAMA_DEBUG=1</Term>
+              <Desc>Show llama-server output for troubleshooting</Desc>
+            </Row>
+            <Row>
+              <Term>HF_TOKEN</Term>
+              <Desc>Hugging Face token for gated model repos</Desc>
+            </Row>
+          </tbody>
+        </DocsTable>
+      </CommandSection>
+    </div>
+  </div>
+</Layout>

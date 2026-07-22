@@ -1,0 +1,30 @@
+name: website-ci
+
+on:
+  pull_request:
+    paths:
+      - website/**
+      - .github/workflows/website-ci.yml
+  push:
+    branches: [main]
+    paths:
+      - website/**
+      - .github/workflows/website-ci.yml
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno install --frozen --allow-scripts
+      - run: deno task check
+      - run: deno task build

@@ -1,0 +1,26 @@
+---
+type Props = {
+  id: string;
+  title: string;
+  summary: string;
+};
+
+const { id, title, summary } = Astro.props;
+---
+
+<section id={id} class="scroll-mt-24 py-8">
+  <h2 class="mb-1">
+    <a
+      href={`#${id}`}
+      class="
+        inline-block border-[3px] border-ink bg-accent px-3 py-1 font-mono
+        text-lg font-bold text-paper shadow-brutal-sm
+        sm:text-xl
+      "
+    >
+      {title}
+    </a>
+  </h2>
+  <p class="mt-4 max-w-prose text-base leading-relaxed">{summary}</p>
+  <slot />
+</section>

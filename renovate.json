@@ -5,6 +5,9 @@
   ],
   "semanticCommits": "enabled",
   "minimumReleaseAge": "3 days",
+  "npm": {
+    "enabled": false
+  },
   "packageRules": [
     {
       "description": "One grouped PR for everything non-major, automerged once CI is green.",

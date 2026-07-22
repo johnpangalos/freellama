@@ -89,17 +89,25 @@ reply = client.chat.completions.create(
 
 ## Configuration
 
-| Variable                  | Purpose                                                     |
-| ------------------------- | ----------------------------------------------------------- |
-| `FREELLAMA_HOME`          | Data directory (default `~/.freellama`)                     |
-| `FREELLAMA_CTX`           | Context size passed to llama-server (default `4096`)        |
-| `FREELLAMA_LLAMA_VERSION` | Pin a llama.cpp release tag, e.g. `b5900` (default: latest) |
-| `FREELLAMA_LLAMA_SERVER`  | Path to an existing `llama-server` binary (skips downloads) |
-| `FREELLAMA_SERVER_ARGS`   | Extra flags passed through to `llama-server`                |
-| `FREELLAMA_DEBUG=1`       | Show llama-server output for troubleshooting                |
-| `HF_TOKEN`                | Hugging Face token for gated model repos                    |
+| Variable                  | Purpose                                                              |
+| ------------------------- | -------------------------------------------------------------------- |
+| `FREELLAMA_HOME`          | Data directory (default `~/.freellama`)                              |
+| `FREELLAMA_CTX`           | Context size passed to llama-server (default `4096`)                 |
+| `FREELLAMA_BACKEND`       | llama.cpp build variant: `vulkan`, `cuda`, `rocm`, ... (default CPU) |
+| `FREELLAMA_LLAMA_VERSION` | Pin a llama.cpp release tag, e.g. `b5900` (default: latest)          |
+| `FREELLAMA_LLAMA_SERVER`  | Path to an existing `llama-server` binary (skips downloads)          |
+| `FREELLAMA_SERVER_ARGS`   | Extra flags passed through to `llama-server`                         |
+| `FREELLAMA_READY_TIMEOUT` | Seconds to wait for llama-server to load a model (default `180`)     |
+| `FREELLAMA_DEBUG=1`       | Show llama-server output for troubleshooting                         |
+| `HF_TOKEN`                | Hugging Face token for gated model repos                             |
 
-Models are stored in `~/.freellama/models`, llama.cpp binaries in `~/.freellama/bin/<tag>`.
+`FREELLAMA_BACKEND` picks the matching GPU build from llama.cpp's prebuilt releases (e.g.
+`FREELLAMA_BACKEND=vulkan` for AMD/Intel GPUs, `cuda` for NVIDIA on Windows). Combine it with
+`FREELLAMA_SERVER_ARGS` to offload work onto the GPU, e.g. `FREELLAMA_SERVER_ARGS="-ngl 99 -fa on"`.
+Interrupted model downloads resume where they left off when you re-run `pull`.
+
+Models are stored in `~/.freellama/models`, llama.cpp binaries in `~/.freellama/bin/<tag>` (GPU
+variants in `~/.freellama/bin/<tag>-<backend>`).
 
 ## Development
 

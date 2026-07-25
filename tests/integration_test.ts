@@ -48,6 +48,23 @@ async function makeFixture(): Promise<{ home: string; wrapper: string; modelName
   return { home, wrapper, modelName };
 }
 
+/** Block until a spawned `freellama serve` is accepting requests. */
+async function waitForServer(base: string): Promise<void> {
+  await poll(
+    async () => {
+      try {
+        const resp = await fetch(`${base}/health`);
+        await resp.body?.cancel();
+        return resp.ok;
+      } catch {
+        return false; // Not up yet.
+      }
+    },
+    (up) => up,
+    { interval: 200, signal: AbortSignal.timeout(20_000) },
+  );
+}
+
 Deno.test("pull downloads every part of a split gguf and rm removes them all", async () => {
   const home = await Deno.makeTempDir({ prefix: "freellama-split-" });
   const prevHome = Deno.env.get("FREELLAMA_HOME");
@@ -329,20 +346,7 @@ Deno.test("serve proxies /v1/models and /v1/chat/completions (json + sse)", asyn
 
   const base = `http://127.0.0.1:${port}`;
   try {
-    // Wait for the front server.
-    await poll(
-      async () => {
-        try {
-          const r = await fetch(`${base}/health`);
-          await r.body?.cancel();
-          return r.ok;
-        } catch {
-          return false; // Not up yet.
-        }
-      },
-      (up) => up,
-      { interval: 200, signal: AbortSignal.timeout(20_000) },
-    );
+    await waitForServer(base);
 
     const models = await (await fetch(`${base}/v1/models`)).json();
     assert(models.data?.[0]?.id === modelName, `models response: ${JSON.stringify(models)}`);
@@ -378,6 +382,85 @@ Deno.test("serve proxies /v1/models and /v1/chat/completions (json + sse)", asyn
     assert(missing.status === 404, `expected 404, got ${missing.status}`);
     const err = await missing.json();
     assert(err.error?.code === "model_not_found", `error body: ${JSON.stringify(err)}`);
+  } finally {
+    proc.kill("SIGTERM");
+    await proc.status;
+    await Deno.remove(home, { recursive: true });
+  }
+});
+
+Deno.test("serve proxies the Anthropic Messages API (json + sse + count_tokens)", async () => {
+  const { home, wrapper, modelName } = await makeFixture();
+  const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });
+  const port = (listener.addr as Deno.NetAddr).port;
+  listener.close();
+
+  const proc = new Deno.Command(Deno.execPath(), {
+    args: ["run", "-A", join(projectRoot, "src", "cli.ts"), "serve", "--port", String(port)],
+    env: { FREELLAMA_HOME: home, FREELLAMA_LLAMA_SERVER: wrapper },
+    stdout: "null",
+    stderr: "null",
+  }).spawn();
+
+  const base = `http://127.0.0.1:${port}`;
+  // What an Anthropic SDK (and so Claude Code) sends.
+  const headers = {
+    "Content-Type": "application/json",
+    "x-api-key": "local",
+    "anthropic-version": "2023-06-01",
+  };
+  try {
+    await waitForServer(base);
+
+    const message = await (await fetch(`${base}/v1/messages`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: modelName,
+        max_tokens: 64,
+        messages: [{ role: "user", content: "hi" }],
+      }),
+    })).json();
+    assert(
+      message.content?.[0]?.text === "Hello world",
+      `message: ${JSON.stringify(message)}`,
+    );
+    assert(message.usage?.output_tokens === 2, "usage passthrough");
+
+    const sse = await (await fetch(`${base}/v1/messages`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: modelName,
+        max_tokens: 64,
+        messages: [{ role: "user", content: "hi" }],
+        stream: true,
+      }),
+    })).text();
+    assert(sse.includes("event: content_block_delta"), `sse: ${sse}`);
+    assert(sse.includes('"Hello"'), `sse: ${sse}`);
+    assert(sse.trimEnd().endsWith('{"type":"message_stop"}'), `sse must end the message: ${sse}`);
+
+    const counted = await (await fetch(`${base}/v1/messages/count_tokens`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ model: modelName, messages: [{ role: "user", content: "hi" }] }),
+    })).json();
+    assert(counted.input_tokens === 7, `count_tokens: ${JSON.stringify(counted)}`);
+    // The client's Anthropic headers must survive the hop to llama-server.
+    assert(counted.seen_anthropic_version === "2023-06-01", "anthropic-version not forwarded");
+    assert(counted.seen_api_key === "local", "x-api-key not forwarded");
+
+    // Failures come back in Anthropic's error shape, not OpenAI's.
+    const missing = await fetch(`${base}/v1/messages`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ model: "nope/nope:Q0", max_tokens: 1, messages: [] }),
+    });
+    assert(missing.status === 404, `expected 404, got ${missing.status}`);
+    const err = await missing.json();
+    assert(err.type === "error", `error body: ${JSON.stringify(err)}`);
+    assert(err.error?.type === "not_found_error", `error body: ${JSON.stringify(err)}`);
   } finally {
     proc.kill("SIGTERM");
     await proc.status;

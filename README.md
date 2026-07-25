@@ -76,6 +76,27 @@ The server has no authentication. It binds `127.0.0.1` by default; if you pass `
 any non-loopback address), anyone who can reach the port can run inference on your machine — put it
 behind a reverse proxy or firewall first.
 
+### Anthropic-compatible endpoints
+
+The same server also speaks the Anthropic Messages API — `POST /v1/messages` (streaming and not) and
+`POST /v1/messages/count_tokens` — because llama.cpp implements that format natively. Point any
+Anthropic client at it with `ANTHROPIC_BASE_URL`:
+
+```bash
+curl http://127.0.0.1:11434/v1/messages \
+  -H 'Content-Type: application/json' \
+  -H 'anthropic-version: 2023-06-01' \
+  -d '{
+    "model": "Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M",
+    "max_tokens": 256,
+    "messages": [{"role": "user", "content": "Hi"}]
+  }'
+```
+
+`x-api-key` and `anthropic-version` are forwarded upstream but nothing checks them — the key can be
+anything. This is what makes Claude Code work against a local model; see
+[Running Claude Code locally](#running-claude-code-locally).
+
 ### How about an example?
 
 ```python

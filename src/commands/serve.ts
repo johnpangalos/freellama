@@ -1,5 +1,7 @@
-// OpenAI-compatible front server. Chat requests are reverse-proxied to a
-// llama-server subprocess that is lazily started for the requested model.
+// OpenAI- and Anthropic-compatible front server. Chat requests are
+// reverse-proxied to a llama-server subprocess that is lazily started for the
+// requested model; llama-server implements both wire formats itself, so this
+// only resolves the model, manages the subprocess, and forwards bytes.
 
 import { poll } from "@std/async";
 import { parseArgs } from "@std/cli/parse-args";
@@ -34,6 +36,52 @@ async function drain(backend: Backend): Promise<void> {
 
 function openaiError(status: number, message: string, type: string, code?: string): Response {
   return Response.json({ error: { message, type, code: code ?? null } }, { status });
+}
+
+function anthropicError(status: number, message: string, type: string): Response {
+  return Response.json({ type: "error", error: { type, message } }, { status });
+}
+
+/**
+ * Routes forwarded to llama-server verbatim. /v1/messages is the Anthropic
+ * Messages API, which llama-server implements natively so agent tools like
+ * Claude Code can run against a local model.
+ */
+const PROXIED_PATHS = new Set([
+  "/v1/chat/completions",
+  "/v1/messages",
+  "/v1/messages/count_tokens",
+]);
+
+// Per-hop headers that describe this connection, not the request being
+// forwarded. Content-Length is dropped because fetch recomputes it, and
+// Accept-Encoding because fetch already decodes the response for us.
+const HOP_BY_HOP_HEADERS = new Set([
+  "accept-encoding",
+  "connection",
+  "content-length",
+  "host",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+]);
+
+/**
+ * Client headers to pass upstream. Anthropic clients send x-api-key and
+ * anthropic-version; llama-server enforces no auth (neither does freellama),
+ * but they are forwarded as-is rather than dropped.
+ */
+function forwardedHeaders(req: Request): Headers {
+  const headers = new Headers();
+  for (const [name, value] of req.headers) {
+    if (!HOP_BY_HOP_HEADERS.has(name)) headers.set(name, value);
+  }
+  headers.set("Content-Type", "application/json");
+  return headers;
 }
 
 export async function serveCommand(args: string[]): Promise<void> {
@@ -96,24 +144,32 @@ export async function serveCommand(args: string[]): Promise<void> {
       });
     }
 
-    if (req.method === "POST" && url.pathname === "/v1/chat/completions") {
+    if (req.method === "POST" && PROXIED_PATHS.has(url.pathname)) {
+      // Report failures in the dialect the client is speaking, so an Anthropic
+      // SDK surfaces "model not found" instead of an unparseable body.
+      const anthropic = url.pathname.startsWith("/v1/messages");
+      const fail = (status: number, message: string, type: string, code?: string) =>
+        anthropic
+          ? anthropicError(status, message, type)
+          : openaiError(status, message, type, code);
+
       let body: { model?: string };
       let rawBody: string;
       try {
         rawBody = await req.text();
         body = JSON.parse(rawBody);
       } catch {
-        return openaiError(400, "Invalid JSON body", "invalid_request_error");
+        return fail(400, "Invalid JSON body", "invalid_request_error");
       }
       if (!body.model) {
-        return openaiError(400, "Missing required field: model", "invalid_request_error");
+        return fail(400, "Missing required field: model", "invalid_request_error");
       }
       const model = await getModel(body.model);
       if (!model) {
-        return openaiError(
+        return fail(
           404,
           `Model "${body.model}" not found. Pull it first: freellama pull hf:${body.model}`,
-          "invalid_request_error",
+          anthropic ? "not_found_error" : "invalid_request_error",
           "model_not_found",
         );
       }
@@ -132,9 +188,9 @@ export async function serveCommand(args: string[]): Promise<void> {
         b.inflight++;
         tracked = b;
         // Pass req.signal through so a client disconnect aborts generation.
-        const upstream = await fetch(`${b.handle.baseUrl}/v1/chat/completions`, {
+        const upstream = await fetch(`${b.handle.baseUrl}${url.pathname}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: forwardedHeaders(req),
           body: rawBody,
           signal: req.signal,
         });
@@ -153,7 +209,11 @@ export async function serveCommand(args: string[]): Promise<void> {
         release();
         if (req.signal.aborted) return new Response(null, { status: 499 });
         const message = err instanceof Error ? err.message : String(err);
-        return openaiError(502, `llama.cpp backend error: ${message}`, "server_error");
+        return fail(
+          502,
+          `llama.cpp backend error: ${message}`,
+          anthropic ? "api_error" : "server_error",
+        );
       }
     }
 

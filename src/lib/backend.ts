@@ -4,8 +4,9 @@
 // freellama runs inference exclusively through llama.cpp (MIT licensed,
 // (c) The ggml authors) — see THIRD_PARTY_NOTICES.md.
 
-import { dirname, join, resolve, SEPARATOR } from "@std/path";
+import { dirname, join, normalize, resolve, SEPARATOR } from "@std/path";
 import { walk } from "@std/fs";
+import { UntarStream } from "@std/tar/untar-stream";
 import { unzipSync } from "fflate";
 import { binDir } from "./store.ts";
 import { progressPrinter } from "./hf.ts";
@@ -126,26 +127,123 @@ export async function extractZip(zip: Uint8Array, installDir: string): Promise<v
   }
 }
 
-// macOS/Linux release builds are .tar.gz. Unpack via the system `tar`, which
-// every macOS and Linux host provides and which preserves the archive's
-// executable bits (fflate cannot untar, and the zip path drops permissions).
-async function extractTarGz(archive: Uint8Array, installDir: string): Promise<void> {
-  const tmp = await Deno.makeTempFile({ suffix: ".tar.gz" });
-  try {
-    await Deno.writeFile(tmp, archive);
-    const { code, stderr } = await new Deno.Command("tar", {
-      args: ["-xzf", tmp, "-C", installDir],
-      stdout: "null",
-      stderr: "piped",
-    }).output();
-    if (code !== 0) {
-      throw new Error(
-        `tar failed to extract llama.cpp archive: ${new TextDecoder().decode(stderr)}`,
-      );
+/**
+ * macOS/Linux release builds are .tar.gz. Unpacked in-process with the
+ * web-standard gzip DecompressionStream and @std/tar, so freellama needs no
+ * `tar` on PATH and both extraction paths behave the same. Unlike the zip path
+ * (fflate does not surface permission bits) the tar headers carry the mode, so
+ * executables keep exactly the bits the archive declared. Exported for tests.
+ */
+export async function extractTarGz(
+  archive: Uint8Array<ArrayBuffer>,
+  installDir: string,
+): Promise<void> {
+  const root = resolve(installDir);
+  // Entry paths come from the archive; never write outside installDir. Applies
+  // to link targets too, so an archive cannot point a symlink at /etc.
+  const safeDest = (path: string): string => {
+    const dest = resolve(installDir, normalize(path));
+    if (dest !== root && !dest.startsWith(root + SEPARATOR)) {
+      throw new Error(`Refusing to extract "${path}": escapes ${installDir}`);
     }
-  } finally {
-    await Deno.remove(tmp).catch(() => {});
+    return dest;
+  };
+
+  const entries = ReadableStream.from([archive])
+    .pipeThrough(new DecompressionStream("gzip"))
+    .pipeThrough(new UntarStream());
+  // A name longer than the 100-byte ustar header field arrives as an extension
+  // record that renames the entry after it. UntarStream passes these through
+  // verbatim, so without applying them here a deeply nested path would be
+  // silently truncated to its first 100 bytes.
+  let longPath: string | undefined;
+  let longLink: string | undefined;
+  for await (const entry of entries) {
+    const type = entry.header.typeflag;
+    if (EXTENSION_TYPES.has(type)) {
+      const body = entry.readable ? await readAll(entry.readable) : new Uint8Array();
+      if (type === "L") longPath = decodeCString(body);
+      else if (type === "K") longLink = decodeCString(body);
+      else if (type === "x") {
+        // "g" is a global default rather than an override of the next entry;
+        // nothing in a llama.cpp release needs it.
+        const records = paxRecords(body);
+        longPath = records.path ?? longPath;
+        longLink = records.linkpath ?? longLink;
+      }
+      continue;
+    }
+    const path = longPath ?? entry.path;
+    const linkname = longLink ?? entry.header.linkname;
+    longPath = longLink = undefined;
+
+    const dest = safeDest(path);
+    if (type === "5") {
+      await Deno.mkdir(dest, { recursive: true });
+      continue;
+    }
+    if (type === "1" || type === "2") {
+      // Shared libraries in the release tarballs ship as symlinks next to their
+      // versioned target; dropping them would leave llama-server unable to link.
+      // A symlink's target is relative to its own directory, a hard link's to
+      // the archive root — either way it has to land inside installDir.
+      const target = safeDest(type === "2" ? join(dirname(path), linkname) : linkname);
+      await Deno.mkdir(dirname(dest), { recursive: true });
+      await Deno.remove(dest).catch(() => {});
+      if (type === "2") await Deno.symlink(linkname, dest);
+      else await Deno.link(target, dest);
+      continue;
+    }
+    // Anything else (character/block devices, FIFOs) has no place in a
+    // llama.cpp release; drain it so the stream can advance.
+    if (type !== "0" && type !== "\0") {
+      await entry.readable?.cancel();
+      continue;
+    }
+    await Deno.mkdir(dirname(dest), { recursive: true });
+    const file = await Deno.create(dest);
+    if (entry.readable) await entry.readable.pipeTo(file.writable);
+    else file.close();
+    if (Deno.build.os !== "windows" && entry.header.mode) {
+      await Deno.chmod(dest, entry.header.mode & 0o777);
+    }
   }
+}
+
+/** GNU long-name/long-link records and pax extended headers. */
+const EXTENSION_TYPES = new Set(["L", "K", "x", "g"]);
+
+async function readAll(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+/** Decode a NUL-terminated string, as GNU writes long names. */
+function decodeCString(bytes: Uint8Array): string {
+  const end = bytes.indexOf(0);
+  return new TextDecoder().decode(end === -1 ? bytes : bytes.subarray(0, end));
+}
+
+/**
+ * Parse a pax extended header body: a run of "<len> <key>=<value>\n" records
+ * where len counts the record's own bytes. Parsed over bytes rather than a
+ * decoded string because len is a byte count.
+ */
+function paxRecords(body: Uint8Array): Record<string, string> {
+  const decoder = new TextDecoder();
+  const records: Record<string, string> = {};
+  let offset = 0;
+  while (offset < body.length) {
+    const space = body.indexOf(0x20, offset);
+    if (space === -1) break;
+    const length = Number(decoder.decode(body.subarray(offset, space)));
+    if (!Number.isInteger(length) || length <= 0 || offset + length > body.length) break;
+    // Drop the record's trailing newline.
+    const record = decoder.decode(body.subarray(space + 1, offset + length - 1));
+    offset += length;
+    const equals = record.indexOf("=");
+    if (equals > 0) records[record.slice(0, equals)] = record.slice(equals + 1);
+  }
+  return records;
 }
 
 /**

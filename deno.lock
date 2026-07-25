@@ -6,6 +6,7 @@
     "jsr:@std/bytes@^1.0.6": "1.0.6",
     "jsr:@std/cli@1": "1.0.32",
     "jsr:@std/data-structures@^1.1.1": "1.1.1",
+    "jsr:@std/encoding@1": "1.0.11",
     "jsr:@std/fmt@1": "1.0.10",
     "jsr:@std/fmt@^1.0.10": "1.0.10",
     "jsr:@std/fs@1": "1.0.24",
@@ -14,6 +15,8 @@
     "jsr:@std/path@1": "1.1.6",
     "jsr:@std/path@^1.1.5": "1.1.6",
     "jsr:@std/streams@1": "1.1.1",
+    "jsr:@std/streams@^1.0.17": "1.1.1",
+    "jsr:@std/tar@0.1": "0.1.10",
     "npm:fflate@0.8": "0.8.3"
   },
   "jsr": {
@@ -42,6 +45,9 @@
     "@std/data-structures@1.1.1": {
       "integrity": "7e1fcf19771fb9c6dbcd7f65039d6d42ef8dc023cfbc0c4cdc74b24e09229380"
     },
+    "@std/encoding@1.0.11": {
+      "integrity": "e7cef2f0b3153bccc17431e7c864a1de03a4b6d9647389c43e08aaa775d37385"
+    },
     "@std/fmt@1.0.10": {
       "integrity": "90dfba288802ac6de82fb31d0917eb9e4450b9925b954d5e51fc29ac07419db5"
     },
@@ -66,6 +72,12 @@
       "dependencies": [
         "jsr:@std/bytes"
       ]
+    },
+    "@std/tar@0.1.10": {
+      "integrity": "6bf907f3a4bc8bfef42973ba132d946756a6161ef6b914a9e1c06debe664db17",
+      "dependencies": [
+        "jsr:@std/streams@^1.0.17"
+      ]
     }
   },
   "npm": {
@@ -78,10 +90,12 @@
       "jsr:@std/assert@1",
       "jsr:@std/async@1",
       "jsr:@std/cli@1",
+      "jsr:@std/encoding@1",
       "jsr:@std/fmt@1",
       "jsr:@std/fs@1",
       "jsr:@std/path@1",
       "jsr:@std/streams@1",
+      "jsr:@std/tar@0.1",
       "npm:fflate@0.8"
     ]
   }

@@ -1,5 +1,6 @@
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import { join } from "@std/path";
+import { decodeBase64 } from "@std/encoding/base64";
 import { zipSync } from "fflate";
 import {
   type HfTreeEntry,
@@ -9,7 +10,8 @@ import {
   refToName,
   splitParts,
 } from "../src/lib/hf.ts";
-import { extractZip, pickAsset } from "../src/lib/backend.ts";
+import { extractTarGz, extractZip, pickAsset } from "../src/lib/backend.ts";
+import { TarStream, type TarStreamInput } from "@std/tar";
 import { formatBytes } from "../src/lib/util.ts";
 
 Deno.test("parseHfRef: repo with quant", () => {
@@ -176,6 +178,124 @@ Deno.test("extractZip rejects entries that escape the install dir (zip-slip)", a
       undefined,
       "zip-slip file was written outside the install dir",
     );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+async function makeTarGz(inputs: TarStreamInput[]): Promise<Uint8Array<ArrayBuffer>> {
+  const chunks = await Array.fromAsync(
+    ReadableStream.from(inputs)
+      .pipeThrough(new TarStream())
+      .pipeThrough(new CompressionStream("gzip")),
+  );
+  return new Uint8Array(await new Blob(chunks).arrayBuffer());
+}
+
+function tarFile(path: string, contents: string, mode?: number): TarStreamInput {
+  const data = new TextEncoder().encode(contents);
+  return {
+    type: "file",
+    path,
+    size: data.byteLength,
+    readable: ReadableStream.from([data]),
+    ...(mode === undefined ? {} : { options: { mode } }),
+  };
+}
+
+Deno.test("extractTarGz writes entries and keeps their mode bits", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "freellama-tar-" });
+  try {
+    await extractTarGz(
+      await makeTarGz([
+        { type: "directory", path: "build/bin/" },
+        tarFile("build/bin/llama-server", "fake", 0o755),
+        tarFile("build/bin/notes.txt", "hi", 0o644),
+      ]),
+      dir,
+    );
+    const server = join(dir, "build", "bin", "llama-server");
+    assertEquals(await Deno.readTextFile(server), "fake");
+    if (Deno.build.os !== "windows") {
+      assertEquals((await Deno.stat(server)).mode! & 0o777, 0o755);
+      assertEquals((await Deno.stat(join(dir, "build", "bin", "notes.txt"))).mode! & 0o777, 0o644);
+    }
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("extractTarGz recreates symlinks inside the install dir", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "freellama-tar-" });
+  try {
+    await extractTarGz(
+      await makeTarGz([
+        tarFile("lib/libggml.so.0", "shared object"),
+        { type: "symlink", path: "lib/libggml.so", linkname: "libggml.so.0" },
+      ]),
+      dir,
+    );
+    assertEquals(await Deno.readTextFile(join(dir, "lib", "libggml.so")), "shared object");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+// A real GNU-format archive (`tar --format=gnu -czf`), the format the llama.cpp
+// Linux release builds ship in. It holds an executable, a symlink, and a path
+// too long for the 100-byte ustar name field — which GNU tar encodes as a
+// separate "L" record that renames the entry after it. @std/tar surfaces those
+// records verbatim rather than applying them, so this is what stops a nested
+// path from being silently truncated back to 100 bytes.
+const GNU_TAR_GZ_BASE64 =
+  "H4sIAAAAAAAAA+2X4W6DIBDHeRRf4FBU9OseoC9BJ1UyhQVxWd9+bE2Ttd3auAxc5/2+YALC5f7c" +
+  "35OmJDiZp+b8Y/Scj1881xXPScLDh0bINDphk4RYY9y1dbfm7xSa0vRhY3S7Ufop0BnvolZl+a3+" +
+  "jLNT/Rmr/JBsAsVzwur1F9AoKx+dsXvQYpDQ+9sAUpup7cB1wkGrJ/BJgsHnCuSgHAg4Xhnwrxrb" +
+  "gNKjk6IBs4NpVH4D18nDdjsl+yaCyyA/IYb+s/2/yDO/HP0/An/C/6vi0v8L9P8YxPJ/Lf18Q93r" +
+  "f0ziHRPL/6/Vf5aVl/7PSJLFSMDK67+R8nnpGJDloOl2UoH789n9H/PLGfZ/MTjqv1U62B2Yrz/j" +
+  "Oeofhc/6970YBIzSvkj7m2fc1r8607/MCo7f/xh43YXdLx0FshQ0PdQ79GH//+u6nuH/Vc5qkuTh" +
+  "rWn19Y8gCIIgCIIgCIKsgzcAp9taACgAAA==";
+
+Deno.test("extractTarGz applies GNU long-name records instead of truncating", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "freellama-tar-" });
+  const longName =
+    "a-directory-name-long-enough-that-gnu-tar-must-emit-a-LongLink-record-instead-of-using-the-name-field";
+  try {
+    await extractTarGz(decodeBase64(GNU_TAR_GZ_BASE64), dir);
+    assertEquals(await Deno.readTextFile(join(dir, longName, "nested.txt")), "deep");
+    assertEquals(await Deno.readTextFile(join(dir, "server-link")), "binary");
+    if (Deno.build.os !== "windows") {
+      const mode = (await Deno.stat(join(dir, "build", "bin", "llama-server"))).mode! & 0o777;
+      assertEquals(mode, 0o755);
+    }
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("extractTarGz rejects entries that escape the install dir", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "freellama-tar-" });
+  try {
+    const evil = await makeTarGz([tarFile("build/../../evil.txt", "boom")]);
+    await assertRejects(() => extractTarGz(evil, dir), Error, "escapes");
+    await assertRejects(
+      () => Deno.stat(join(dir, "..", "..", "evil.txt")),
+      Deno.errors.NotFound,
+      undefined,
+      "tar-slip file was written outside the install dir",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("extractTarGz rejects a symlink pointing outside the install dir", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "freellama-tar-" });
+  try {
+    const evil = await makeTarGz([
+      { type: "symlink", path: "lib/escape", linkname: "../../../../etc/passwd" },
+    ]);
+    await assertRejects(() => extractTarGz(evil, dir), Error, "escapes");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }

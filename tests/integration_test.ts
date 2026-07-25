@@ -5,6 +5,8 @@
 import { assert, assertEquals } from "@std/assert";
 import { poll } from "@std/async";
 import { fromFileUrl, join } from "@std/path";
+import { TarStream, type TarStreamInput } from "@std/tar";
+import { installedBackendTag, upgradeLlamaServer } from "../src/lib/backend.ts";
 import { parseHfRef, resolveGguf } from "../src/lib/hf.ts";
 import { startLlamaServer } from "../src/lib/runner.ts";
 import { streamChat } from "../src/lib/openai.ts";
@@ -116,6 +118,65 @@ Deno.test("concurrent manifest writes keep every entry", async () => {
     ));
     assertEquals((await listModels()).map((m) => m.name).sort(), [...names].sort());
   } finally {
+    if (prevHome === undefined) Deno.env.delete("FREELLAMA_HOME");
+    else Deno.env.set("FREELLAMA_HOME", prevHome);
+    await Deno.remove(home, { recursive: true });
+  }
+});
+
+Deno.test("upgrade installs the latest backend release and is a no-op when current", async () => {
+  const home = await Deno.makeTempDir({ prefix: "freellama-upgrade-" });
+  const prevHome = Deno.env.get("FREELLAMA_HOME");
+  Deno.env.set("FREELLAMA_HOME", home);
+  const realFetch = globalThis.fetch;
+
+  // Name the asset the way pickAsset expects for whatever host runs the tests.
+  const osToken = Deno.build.os === "darwin"
+    ? "macos"
+    : Deno.build.os === "windows"
+    ? "win"
+    : "ubuntu";
+  const archToken = Deno.build.arch === "aarch64" ? "arm64" : "x64";
+  const asset = `llama-b9999-bin-${osToken}-${archToken}.tar.gz`;
+  const exe = Deno.build.os === "windows" ? "llama-server.exe" : "llama-server";
+  const tarball = await Array.fromAsync(
+    ReadableStream.from<TarStreamInput>([{
+      type: "file",
+      path: `build/bin/${exe}`,
+      size: 4,
+      readable: ReadableStream.from([new TextEncoder().encode("fake")]),
+    }])
+      .pipeThrough(new TarStream())
+      .pipeThrough(new CompressionStream("gzip")),
+  );
+
+  let downloads = 0;
+  globalThis.fetch = ((input: URL | Request | string, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url.endsWith("/releases/latest")) {
+      return Promise.resolve(Response.json({
+        tag_name: "b9999",
+        assets: [{ name: asset, browser_download_url: `https://example.com/${asset}`, size: 1 }],
+      }));
+    }
+    if (url.endsWith(asset)) {
+      downloads++;
+      return Promise.resolve(new Response(new Blob(tarball).stream()));
+    }
+    return realFetch(input, init);
+  }) as typeof fetch;
+
+  try {
+    const first = await upgradeLlamaServer();
+    assertEquals(first, { tag: "b9999", alreadyInstalled: false });
+    assertEquals(await installedBackendTag(), "b9999");
+    assertEquals(await Deno.readTextFile(join(home, "bin", "b9999", "build", "bin", exe)), "fake");
+
+    // Re-running must not re-download the release it already has.
+    assertEquals(await upgradeLlamaServer(), { tag: "b9999", alreadyInstalled: true });
+    assertEquals(downloads, 1);
+  } finally {
+    globalThis.fetch = realFetch;
     if (prevHome === undefined) Deno.env.delete("FREELLAMA_HOME");
     else Deno.env.set("FREELLAMA_HOME", prevHome);
     await Deno.remove(home, { recursive: true });

@@ -77,8 +77,9 @@ async function fetchRelease(version: string): Promise<Release> {
   return (await resp.json()) as Release;
 }
 
-async function findInstalled(): Promise<string | undefined> {
-  const exe = Deno.build.os === "windows" ? "llama-server.exe" : "llama-server";
+/** The newest llama-server already unpacked under ~/.freellama/bin, if any. */
+async function findInstalled(): Promise<{ path: string; tag: string } | undefined> {
+  const exe = serverExe();
   try {
     const tags: string[] = [];
     for await (const entry of Deno.readDir(binDir())) {
@@ -88,12 +89,21 @@ async function findInstalled(): Promise<string | undefined> {
     tags.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
     for (const tag of tags) {
       const found = await findFile(join(binDir(), tag), exe);
-      if (found) return found;
+      if (found) return { path: found, tag };
     }
   } catch (err) {
     if (!(err instanceof Deno.errors.NotFound)) throw err;
   }
   return undefined;
+}
+
+function serverExe(): string {
+  return Deno.build.os === "windows" ? "llama-server.exe" : "llama-server";
+}
+
+/** Release tag of the currently installed backend, for `freellama upgrade` to report. */
+export async function installedBackendTag(): Promise<string | undefined> {
+  return (await findInstalled())?.tag;
 }
 
 async function findFile(dir: string, name: string): Promise<string | undefined> {
@@ -250,6 +260,11 @@ function paxRecords(body: Uint8Array): Record<string, string> {
  * Ensure a llama-server binary is available locally, downloading the pinned
  * (or latest) llama.cpp release if needed. Returns the absolute binary path.
  *
+ * "latest" means the newest release as of the first install: an already
+ * installed backend is reused rather than re-resolved, so no command silently
+ * pulls a fresh llama.cpp build out from under you. `freellama upgrade` is how
+ * you move to a newer one.
+ *
  * Set FREELLAMA_LLAMA_VERSION to pin a release tag (e.g. "b5900");
  * FREELLAMA_LLAMA_SERVER to point at an existing llama-server binary and skip
  * downloads entirely.
@@ -259,18 +274,37 @@ export async function ensureLlamaServer(): Promise<string> {
   if (explicit) return explicit;
 
   const version = Deno.env.get("FREELLAMA_LLAMA_VERSION") ?? "latest";
-  const exe = Deno.build.os === "windows" ? "llama-server.exe" : "llama-server";
 
-  // Without an explicit pin, reuse whatever is already installed before going online.
   if (version === "latest") {
     const installed = await findInstalled();
-    if (installed) return installed;
+    if (installed) return installed.path;
   } else {
-    const existing = await findFile(join(binDir(), version), exe);
+    const existing = await findFile(join(binDir(), version), serverExe());
     if (existing) return existing;
   }
+  return await installRelease(await fetchRelease(version));
+}
 
-  const release = await fetchRelease(version);
+/**
+ * Install the newest llama.cpp release (or the pinned tag), replacing "reuse
+ * whatever is on disk" with an explicit, user-driven update. Returns the tag
+ * and whether it was already the installed one.
+ */
+export async function upgradeLlamaServer(): Promise<{ tag: string; alreadyInstalled: boolean }> {
+  if (Deno.env.get("FREELLAMA_LLAMA_SERVER")) {
+    throw new Error(
+      "FREELLAMA_LLAMA_SERVER points freellama at your own llama-server build, which it does not manage. Unset it to upgrade the downloaded backend.",
+    );
+  }
+  const release = await fetchRelease(Deno.env.get("FREELLAMA_LLAMA_VERSION") ?? "latest");
+  const existing = await findFile(join(binDir(), release.tag_name), serverExe());
+  if (existing) return { tag: release.tag_name, alreadyInstalled: true };
+  await installRelease(release);
+  return { tag: release.tag_name, alreadyInstalled: false };
+}
+
+/** Download and unpack a release into ~/.freellama/bin/<tag>. Returns the binary path. */
+async function installRelease(release: Release): Promise<string> {
   const asset = pickAsset(release.assets, Deno.build.os, Deno.build.arch);
   if (!asset) {
     throw new Error(
@@ -308,7 +342,7 @@ export async function ensureLlamaServer(): Promise<string> {
     await extractZip(archive, installDir);
   }
 
-  const server = await findFile(installDir, exe);
+  const server = await findFile(installDir, serverExe());
   if (!server) {
     throw new Error(`llama-server not found inside ${asset.name} after extraction`);
   }

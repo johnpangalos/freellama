@@ -42,6 +42,7 @@ deno task compile   # or build a standalone binary: ./freellama
 | `list` / `ls`                 | List installed models                                                                |
 | `rm <model>`                  | Remove an installed model                                                            |
 | `serve [--host H] [--port P]` | OpenAI-compatible server (default `127.0.0.1:11434`)                                 |
+| `upgrade`                     | Install the latest llama.cpp backend release                                         |
 
 In the REPL: `/clear` resets the conversation, `/bye` (or Ctrl+D) exits, Ctrl+C interrupts a
 response without exiting. Piping stdin (`echo "hi" | freellama run <model>`) skips the prompts and
@@ -93,7 +94,7 @@ reply = client.chat.completions.create(
 | ------------------------- | ------------------------------------------------------------ |
 | `FREELLAMA_HOME`          | Data directory (default `~/.freellama`)                      |
 | `FREELLAMA_CTX`           | Context size passed to llama-server (default `4096`)         |
-| `FREELLAMA_LLAMA_VERSION` | Pin a llama.cpp release tag, e.g. `b5900` (default: latest)  |
+| `FREELLAMA_LLAMA_VERSION` | Pin a llama.cpp release tag, e.g. `b5900`                    |
 | `FREELLAMA_LLAMA_SERVER`  | Path to an existing `llama-server` binary (skips downloads)  |
 | `FREELLAMA_SERVER_ARGS`   | Extra flags passed through to `llama-server` (shell quoting) |
 | `FREELLAMA_DEBUG=1`       | Show llama-server output for troubleshooting                 |
@@ -107,6 +108,21 @@ FREELLAMA_SERVER_ARGS='--flash-attn --chat-template "my template"' freellama ser
 ```
 
 Models are stored in `~/.freellama/models`, llama.cpp binaries in `~/.freellama/bin/<tag>`.
+
+### Upgrading the llama.cpp backend
+
+The first command that needs `llama-server` downloads the latest llama.cpp release; every command
+after that reuses the installed one, so no run surprises you with a fresh multi-hundred-megabyte
+build (or a llama.cpp regression) mid-session. To move to a newer release:
+
+```bash
+freellama upgrade
+```
+
+That resolves the latest release (or the tag in `FREELLAMA_LLAMA_VERSION`) and installs it beside
+the current one under `~/.freellama/bin/<tag>`. The previous build is left in place — delete its
+directory when you're happy with the new one. `FREELLAMA_LLAMA_SERVER` opts out of all of this and
+points freellama at a build you manage yourself.
 
 ## Development
 

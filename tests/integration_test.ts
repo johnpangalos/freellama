@@ -9,7 +9,7 @@ import { parseHfRef, resolveGguf } from "../src/lib/hf.ts";
 import { startLlamaServer } from "../src/lib/runner.ts";
 import { streamChat } from "../src/lib/openai.ts";
 import { pullModel } from "../src/commands/pull.ts";
-import { getModel, removeModel } from "../src/lib/store.ts";
+import { addModel, getModel, listModels, removeModel } from "../src/lib/store.ts";
 
 const projectRoot = fromFileUrl(new URL("..", import.meta.url));
 
@@ -92,6 +92,30 @@ Deno.test("pull downloads every part of a split gguf and rm removes them all", a
     }
   } finally {
     globalThis.fetch = realFetch;
+    if (prevHome === undefined) Deno.env.delete("FREELLAMA_HOME");
+    else Deno.env.set("FREELLAMA_HOME", prevHome);
+    await Deno.remove(home, { recursive: true });
+  }
+});
+
+Deno.test("concurrent manifest writes keep every entry", async () => {
+  const home = await Deno.makeTempDir({ prefix: "freellama-lock-" });
+  const prevHome = Deno.env.get("FREELLAMA_HOME");
+  Deno.env.set("FREELLAMA_HOME", home);
+  try {
+    const names = ["a/one:Q4", "b/two:Q4", "c/three:Q4", "d/four:Q4"];
+    // Interleaved read-modify-writes: without the lock the last writer wins and
+    // the others' entries disappear.
+    await Promise.all(names.map((name) =>
+      addModel(name, {
+        uri: `hf:${name}`,
+        file: join(home, "models", `${name}.gguf`),
+        sizeBytes: 1,
+        pulledAt: "2026-07-19T00:00:00.000Z",
+      })
+    ));
+    assertEquals((await listModels()).map((m) => m.name).sort(), [...names].sort());
+  } finally {
     if (prevHome === undefined) Deno.env.delete("FREELLAMA_HOME");
     else Deno.env.set("FREELLAMA_HOME", prevHome);
     await Deno.remove(home, { recursive: true });

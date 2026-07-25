@@ -1,5 +1,6 @@
 // Model storage: ~/.freellama/{models,bin,manifest.json}. Override the root with FREELLAMA_HOME.
 
+import { delay } from "@std/async";
 import { join } from "@std/path";
 
 export interface ModelEntry {
@@ -61,7 +62,58 @@ export async function readManifest(): Promise<Manifest> {
 
 export async function writeManifest(manifest: Manifest): Promise<void> {
   await Deno.mkdir(freellamaHome(), { recursive: true });
-  await Deno.writeTextFile(manifestPath(), JSON.stringify(manifest, null, 2) + "\n");
+  const path = manifestPath();
+  // Write-then-rename: rename is atomic on POSIX, so a crash mid-write leaves
+  // the previous manifest intact instead of a truncated one that fails to parse.
+  const tmp = `${path}.${Deno.pid}.tmp`;
+  await Deno.writeTextFile(tmp, JSON.stringify(manifest, null, 2) + "\n");
+  try {
+    await Deno.rename(tmp, path);
+  } catch (err) {
+    await Deno.remove(tmp).catch(() => {});
+    throw err;
+  }
+}
+
+/** How long to wait for another process to release the manifest lock. */
+const LOCK_TIMEOUT_MS = 10_000;
+/** A lock older than this belongs to a process that died holding it. */
+const LOCK_STALE_MS = 60_000;
+
+/**
+ * Run a manifest read-modify-write under an advisory lock, so two concurrent
+ * `freellama pull`s cannot both read the old manifest and write back a version
+ * missing the other's entry.
+ */
+async function withManifestLock<T>(fn: () => Promise<T>): Promise<T> {
+  await Deno.mkdir(freellamaHome(), { recursive: true });
+  const lock = `${manifestPath()}.lock`;
+  const giveUpAt = Date.now() + LOCK_TIMEOUT_MS;
+  while (true) {
+    try {
+      // createNew is the atomic test-and-set: exactly one process wins.
+      (await Deno.open(lock, { createNew: true, write: true })).close();
+      break;
+    } catch (err) {
+      if (!(err instanceof Deno.errors.AlreadyExists)) throw err;
+      const mtime = await Deno.stat(lock).then((s) => s.mtime, () => null);
+      if (mtime && Date.now() - mtime.getTime() > LOCK_STALE_MS) {
+        await Deno.remove(lock).catch(() => {});
+        continue;
+      }
+      if (Date.now() > giveUpAt) {
+        throw new Error(
+          `Timed out waiting for the manifest lock. If no other freellama process is running, remove ${lock}`,
+        );
+      }
+      await delay(50);
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    await Deno.remove(lock).catch(() => {});
+  }
 }
 
 export async function getModel(
@@ -74,19 +126,27 @@ export async function getModel(
 }
 
 export async function addModel(name: string, entry: ModelEntry): Promise<void> {
-  const manifest = await readManifest();
-  manifest.models[normalizeName(name)] = entry;
-  await writeManifest(manifest);
+  await withManifestLock(async () => {
+    const manifest = await readManifest();
+    manifest.models[normalizeName(name)] = entry;
+    await writeManifest(manifest);
+  });
 }
 
 /** Remove a model's manifest entry and file(s). Returns the removed entry, if any. */
 export async function removeModel(nameOrUri: string): Promise<ModelEntry | undefined> {
   const name = normalizeName(nameOrUri);
-  const manifest = await readManifest();
-  const entry = manifest.models[name];
+  const entry = await withManifestLock(async () => {
+    const manifest = await readManifest();
+    const found = manifest.models[name];
+    if (!found) return undefined;
+    delete manifest.models[name];
+    await writeManifest(manifest);
+    return found;
+  });
   if (!entry) return undefined;
-  delete manifest.models[name];
-  await writeManifest(manifest);
+  // The files go last, outside the lock: they are this entry's alone, and a
+  // multi-gigabyte unlink should not hold up another process's manifest edit.
   for (const file of entry.files ?? [entry.file]) {
     try {
       await Deno.remove(file);

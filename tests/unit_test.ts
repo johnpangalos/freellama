@@ -12,7 +12,7 @@ import {
 } from "../src/lib/hf.ts";
 import { extractTarGz, extractZip, pickAsset } from "../src/lib/backend.ts";
 import { TarStream, type TarStreamInput } from "@std/tar";
-import { formatBytes } from "../src/lib/util.ts";
+import { formatBytes, tokenizeArgs } from "../src/lib/util.ts";
 
 Deno.test("parseHfRef: repo with quant", () => {
   assertEquals(parseHfRef("hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M"), {
@@ -299,6 +299,34 @@ Deno.test("extractTarGz rejects a symlink pointing outside the install dir", asy
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
+});
+
+Deno.test("tokenizeArgs: plain flags split on whitespace", () => {
+  assertEquals(tokenizeArgs("--flash-attn  -ngl 99\t--mlock"), [
+    "--flash-attn",
+    "-ngl",
+    "99",
+    "--mlock",
+  ]);
+  assertEquals(tokenizeArgs(""), []);
+  assertEquals(tokenizeArgs("   "), []);
+});
+
+Deno.test("tokenizeArgs: quotes group values containing spaces", () => {
+  assertEquals(tokenizeArgs('--chat-template "my template"'), ["--chat-template", "my template"]);
+  assertEquals(tokenizeArgs("--alias 'a b'"), ["--alias", "a b"]);
+  // Quotes may also wrap only part of an argument.
+  assertEquals(tokenizeArgs('--alias="a b"'), ["--alias=a b"]);
+  assertEquals(tokenizeArgs('--alias ""'), ["--alias", ""]);
+});
+
+Deno.test("tokenizeArgs: backslash escapes outside single quotes", () => {
+  assertEquals(tokenizeArgs("--alias a\\ b"), ["--alias", "a b"]);
+  assertEquals(tokenizeArgs("--alias 'a\\ b'"), ["--alias", "a\\ b"]);
+});
+
+Deno.test("tokenizeArgs: rejects an unterminated quote", () => {
+  assertThrows(() => tokenizeArgs('--chat-template "oops'), Error, "Unterminated");
 });
 
 Deno.test("formatBytes", () => {

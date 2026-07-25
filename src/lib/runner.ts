@@ -1,6 +1,7 @@
 // llama-server subprocess lifecycle: spawn, wait for readiness, stop.
 
 import { deadline, poll } from "@std/async";
+import { tokenizeArgs } from "./util.ts";
 
 export interface LlamaServerHandle {
   port: number;
@@ -41,7 +42,7 @@ export async function startLlamaServer(opts: StartOptions): Promise<LlamaServerH
     "-c",
     String(contextSize),
     "--jinja",
-    ...(opts.extraArgs ?? Deno.env.get("FREELLAMA_SERVER_ARGS")?.split(" ").filter(Boolean) ?? []),
+    ...(opts.extraArgs ?? tokenizeArgs(Deno.env.get("FREELLAMA_SERVER_ARGS") ?? "")),
   ];
 
   const proc = new Deno.Command(opts.serverBin, {

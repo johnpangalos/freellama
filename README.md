@@ -89,15 +89,22 @@ reply = client.chat.completions.create(
 
 ## Configuration
 
-| Variable                  | Purpose                                                     |
-| ------------------------- | ----------------------------------------------------------- |
-| `FREELLAMA_HOME`          | Data directory (default `~/.freellama`)                     |
-| `FREELLAMA_CTX`           | Context size passed to llama-server (default `4096`)        |
-| `FREELLAMA_LLAMA_VERSION` | Pin a llama.cpp release tag, e.g. `b5900` (default: latest) |
-| `FREELLAMA_LLAMA_SERVER`  | Path to an existing `llama-server` binary (skips downloads) |
-| `FREELLAMA_SERVER_ARGS`   | Extra flags passed through to `llama-server`                |
-| `FREELLAMA_DEBUG=1`       | Show llama-server output for troubleshooting                |
-| `HF_TOKEN`                | Hugging Face token for gated model repos                    |
+| Variable                  | Purpose                                                      |
+| ------------------------- | ------------------------------------------------------------ |
+| `FREELLAMA_HOME`          | Data directory (default `~/.freellama`)                      |
+| `FREELLAMA_CTX`           | Context size passed to llama-server (default `4096`)         |
+| `FREELLAMA_LLAMA_VERSION` | Pin a llama.cpp release tag, e.g. `b5900` (default: latest)  |
+| `FREELLAMA_LLAMA_SERVER`  | Path to an existing `llama-server` binary (skips downloads)  |
+| `FREELLAMA_SERVER_ARGS`   | Extra flags passed through to `llama-server` (shell quoting) |
+| `FREELLAMA_DEBUG=1`       | Show llama-server output for troubleshooting                 |
+| `HF_TOKEN`                | Hugging Face token for gated model repos                     |
+
+`FREELLAMA_SERVER_ARGS` is split the way a shell would: whitespace separates arguments, and single
+or double quotes group a value that contains spaces.
+
+```bash
+FREELLAMA_SERVER_ARGS='--flash-attn --chat-template "my template"' freellama serve
+```
 
 Models are stored in `~/.freellama/models`, llama.cpp binaries in `~/.freellama/bin/<tag>`.
 

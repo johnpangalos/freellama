@@ -1,8 +1,9 @@
+import { parseArgs } from "@std/cli/parse-args";
 import { TextLineStream } from "@std/streams";
 import { status } from "../lib/util.ts";
 import { getModel } from "../lib/store.ts";
 import { ensureLlamaServer } from "../lib/backend.ts";
-import { type LlamaServerHandle, startLlamaServer } from "../lib/runner.ts";
+import { type LlamaServerHandle, resolveContextSize, startLlamaServer } from "../lib/runner.ts";
 import { type ChatMessage, streamChat } from "../lib/openai.ts";
 import { pullModel } from "./pull.ts";
 
@@ -13,9 +14,14 @@ function print(text: string) {
 }
 
 export async function runCommand(args: string[]): Promise<void> {
-  const reference = args[0];
-  if (!reference) throw new Error('Usage: freellama run <model> ["one-shot prompt"]');
-  const oneShot = args.slice(1).join(" ").trim() || undefined;
+  // stopEarly keeps everything after the model name as prompt text, so a prompt
+  // that happens to start with a dash is not mistaken for a flag.
+  const flags = parseArgs(args, { string: ["ctx"], stopEarly: true });
+  const positional = flags._.map(String);
+  const reference = positional[0];
+  if (!reference) throw new Error('Usage: freellama run [--ctx N] <model> ["one-shot prompt"]');
+  const oneShot = positional.slice(1).join(" ").trim() || undefined;
+  const contextSize = resolveContextSize(flags.ctx);
 
   let model = await getModel(reference);
   if (!model) {
@@ -25,7 +31,11 @@ export async function runCommand(args: string[]): Promise<void> {
 
   const serverBin = await ensureLlamaServer();
   status(`loading ${model.name}...`);
-  const handle = await startLlamaServer({ serverBin, modelPath: model.entry.file });
+  const handle = await startLlamaServer({
+    serverBin,
+    modelPath: model.entry.file,
+    contextSize,
+  });
 
   let stopping = false;
   const stopServer = async () => {

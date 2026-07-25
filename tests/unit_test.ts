@@ -12,6 +12,7 @@ import {
 } from "../src/lib/hf.ts";
 import { extractTarGz, extractZip, pickAsset } from "../src/lib/backend.ts";
 import { TarStream, type TarStreamInput } from "@std/tar";
+import { DEFAULT_CTX, resolveContextSize } from "../src/lib/runner.ts";
 import { formatBytes, tokenizeArgs } from "../src/lib/util.ts";
 
 Deno.test("parseHfRef: repo with quant", () => {
@@ -327,6 +328,29 @@ Deno.test("tokenizeArgs: backslash escapes outside single quotes", () => {
 
 Deno.test("tokenizeArgs: rejects an unterminated quote", () => {
   assertThrows(() => tokenizeArgs('--chat-template "oops'), Error, "Unterminated");
+});
+
+Deno.test("resolveContextSize: explicit flag, then env, then the default", () => {
+  const prev = Deno.env.get("FREELLAMA_CTX");
+  try {
+    Deno.env.delete("FREELLAMA_CTX");
+    assertEquals(resolveContextSize(), DEFAULT_CTX);
+    assertEquals(resolveContextSize("8192"), 8192);
+    // 0 defers to the model's trained context rather than meaning "unset".
+    assertEquals(resolveContextSize("0"), 0);
+    Deno.env.set("FREELLAMA_CTX", "16384");
+    assertEquals(resolveContextSize(), 16384);
+    assertEquals(resolveContextSize("4096"), 4096);
+  } finally {
+    if (prev === undefined) Deno.env.delete("FREELLAMA_CTX");
+    else Deno.env.set("FREELLAMA_CTX", prev);
+  }
+});
+
+Deno.test("resolveContextSize: rejects a value that is not a whole count", () => {
+  assertThrows(() => resolveContextSize("-1"), Error, "Invalid context size");
+  assertThrows(() => resolveContextSize("many"), Error, "Invalid context size");
+  assertThrows(() => resolveContextSize("4096.5"), Error, "Invalid context size");
 });
 
 Deno.test("formatBytes", () => {

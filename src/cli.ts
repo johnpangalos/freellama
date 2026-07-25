@@ -23,16 +23,20 @@ Usage: freellama <command> [args]
 Commands:
   pull <model>            Download a GGUF model from Hugging Face
                           e.g. freellama pull hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M
-  run <model> [prompt]    Chat with a model (REPL, or one-shot with a prompt)
+  run [--ctx N] <model> [prompt]
+                          Chat with a model (REPL, or one-shot with a prompt)
   list | ls               List installed models
   rm <model>              Remove an installed model
-  serve [--host H] [--port P]
+  serve [--host H] [--port P] [--ctx N]
                           Start an OpenAI-compatible server (default 127.0.0.1:11434)
   upgrade                 Install the latest llama.cpp backend release
 
+Options:
+  --ctx N                 Context size for this run (0 = the model's trained context)
+
 Environment:
   FREELLAMA_HOME            Data directory (default ~/.freellama)
-  FREELLAMA_CTX             Context size (default 4096)
+  FREELLAMA_CTX             Context size (default 32768)
   FREELLAMA_LLAMA_VERSION   Pin a llama.cpp release tag (default: latest at first install)
   FREELLAMA_LLAMA_SERVER    Use an existing llama-server binary
   FREELLAMA_SERVER_ARGS     Extra flags passed to llama-server

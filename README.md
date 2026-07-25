@@ -35,14 +35,14 @@ deno task compile   # or build a standalone binary: ./freellama
 
 ## Commands
 
-| Command                       | Description                                                                          |
-| ----------------------------- | ------------------------------------------------------------------------------------ |
-| `pull <model>`                | Download a GGUF from Hugging Face (`hf:user/repo:QUANT` or `hf:user/repo/file.gguf`) |
-| `run <model> [prompt]`        | Interactive streaming chat REPL, or a one-shot completion                            |
-| `list` / `ls`                 | List installed models                                                                |
-| `rm <model>`                  | Remove an installed model                                                            |
-| `serve [--host H] [--port P]` | OpenAI-compatible server (default `127.0.0.1:11434`)                                 |
-| `upgrade`                     | Install the latest llama.cpp backend release                                         |
+| Command                                 | Description                                                                          |
+| --------------------------------------- | ------------------------------------------------------------------------------------ |
+| `pull <model>`                          | Download a GGUF from Hugging Face (`hf:user/repo:QUANT` or `hf:user/repo/file.gguf`) |
+| `run [--ctx N] <model> [prompt]`        | Interactive streaming chat REPL, or a one-shot completion                            |
+| `list` / `ls`                           | List installed models                                                                |
+| `rm <model>`                            | Remove an installed model                                                            |
+| `serve [--host H] [--port P] [--ctx N]` | OpenAI-compatible server (default `127.0.0.1:11434`)                                 |
+| `upgrade`                               | Install the latest llama.cpp backend release                                         |
 
 In the REPL: `/clear` resets the conversation, `/bye` (or Ctrl+D) exits, Ctrl+C interrupts a
 response without exiting. Piping stdin (`echo "hi" | freellama run <model>`) skips the prompts and
@@ -93,7 +93,7 @@ reply = client.chat.completions.create(
 | Variable                  | Purpose                                                      |
 | ------------------------- | ------------------------------------------------------------ |
 | `FREELLAMA_HOME`          | Data directory (default `~/.freellama`)                      |
-| `FREELLAMA_CTX`           | Context size passed to llama-server (default `4096`)         |
+| `FREELLAMA_CTX`           | Context size passed to llama-server (default `32768`)        |
 | `FREELLAMA_LLAMA_VERSION` | Pin a llama.cpp release tag, e.g. `b5900`                    |
 | `FREELLAMA_LLAMA_SERVER`  | Path to an existing `llama-server` binary (skips downloads)  |
 | `FREELLAMA_SERVER_ARGS`   | Extra flags passed through to `llama-server` (shell quoting) |
@@ -108,6 +108,31 @@ FREELLAMA_SERVER_ARGS='--flash-attn --chat-template "my template"' freellama ser
 ```
 
 Models are stored in `~/.freellama/models`, llama.cpp binaries in `~/.freellama/bin/<tag>`.
+
+### Context size
+
+The default context window is 32768 tokens, sized for agents rather than chat — a coding agent's
+system prompt alone can run 20–30k tokens. Set it per invocation with `--ctx`, or globally with
+`FREELLAMA_CTX`:
+
+```bash
+freellama serve --ctx 65536      # a bigger window
+freellama run --ctx 8192 <model> # a smaller one, for a memory-constrained machine
+freellama serve --ctx 0          # whatever context the model was trained for
+```
+
+The KV cache grows linearly with the context size, and it is per-model: a 30B-class model at 32k
+costs several GB of RAM/VRAM on top of the weights. If the model fails to load, or loading pushes
+your machine into swap, lower `--ctx` first. Quantizing the KV cache trades a little quality for
+roughly half the cache memory and lets a large context fit where it otherwise wouldn't:
+
+```bash
+FREELLAMA_SERVER_ARGS='--cache-type-k q8_0 --cache-type-v q8_0' freellama serve
+```
+
+`--ctx 0` hands the decision to llama-server, which reads the model's trained context from the GGUF
+metadata. That is the most correct answer and the most dangerous one: a model trained for 256k
+tokens will try to allocate a KV cache to match.
 
 ### Upgrading the llama.cpp backend
 

@@ -230,6 +230,37 @@ Deno.test("runner starts the server, streamChat streams, stop terminates", async
   }
 });
 
+Deno.test("run --ctx reaches llama-server as -c", async () => {
+  const { home, wrapper, modelName } = await makeFixture();
+  const argsFile = join(home, "backend-args.json");
+  try {
+    const out = await new Deno.Command(Deno.execPath(), {
+      args: [
+        "run",
+        "-A",
+        join(projectRoot, "src", "cli.ts"),
+        "run",
+        "--ctx",
+        "8192",
+        modelName,
+        "hi there",
+      ],
+      env: {
+        FREELLAMA_HOME: home,
+        FREELLAMA_LLAMA_SERVER: wrapper,
+        FAKE_LLAMA_ARGS_FILE: argsFile,
+      },
+      stdout: "null",
+      stderr: "piped",
+    }).output();
+    assert(out.code === 0, `run exited ${out.code}: ${new TextDecoder().decode(out.stderr)}`);
+    const args: string[] = JSON.parse(await Deno.readTextFile(argsFile));
+    assertEquals(args[args.indexOf("-c") + 1], "8192");
+  } finally {
+    await Deno.remove(home, { recursive: true });
+  }
+});
+
 Deno.test("cli run one-shot prints the streamed response", async () => {
   const { home, wrapper, modelName } = await makeFixture();
   try {

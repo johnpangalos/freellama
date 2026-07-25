@@ -6,7 +6,7 @@ import { parseArgs } from "@std/cli/parse-args";
 import { status } from "../lib/util.ts";
 import { getModel, listModels } from "../lib/store.ts";
 import { ensureLlamaServer } from "../lib/backend.ts";
-import { type LlamaServerHandle, startLlamaServer } from "../lib/runner.ts";
+import { type LlamaServerHandle, resolveContextSize, startLlamaServer } from "../lib/runner.ts";
 
 interface Backend {
   name: string;
@@ -38,7 +38,7 @@ function openaiError(status: number, message: string, type: string, code?: strin
 
 export async function serveCommand(args: string[]): Promise<void> {
   const flags = parseArgs(args, {
-    string: ["host", "port"],
+    string: ["host", "port", "ctx"],
     default: { host: "127.0.0.1", port: "11434" },
   });
   const hostname = flags.host;
@@ -46,6 +46,7 @@ export async function serveCommand(args: string[]): Promise<void> {
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
     throw new Error(`Invalid port "${flags.port}"`);
   }
+  const contextSize = resolveContextSize(flags.ctx);
 
   const serverBin = await ensureLlamaServer();
 
@@ -66,7 +67,7 @@ export async function serveCommand(args: string[]): Promise<void> {
         await old.handle.stop();
       }
       status(`loading ${name}...`);
-      const handle = await startLlamaServer({ serverBin, modelPath });
+      const handle = await startLlamaServer({ serverBin, modelPath, contextSize });
       status(`${name} ready`);
       backend = { name, handle, inflight: 0 };
       return backend;

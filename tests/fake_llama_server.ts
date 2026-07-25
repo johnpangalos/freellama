@@ -9,6 +9,10 @@ function argValue(flag: string): string | undefined {
 const port = Number(argValue("--port") ?? 8080);
 const model = argValue("-m") ?? "unknown";
 
+// Lets a test assert on the flags freellama chose to spawn the backend with.
+const argsFile = Deno.env.get("FAKE_LLAMA_ARGS_FILE");
+if (argsFile) Deno.writeTextFileSync(argsFile, JSON.stringify(Deno.args));
+
 Deno.serve({ hostname: "127.0.0.1", port }, async (req) => {
   const url = new URL(req.url);
   if (url.pathname === "/health") return new Response('{"status":"ok"}');

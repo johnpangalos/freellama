@@ -454,6 +454,82 @@ exit 7
   }
 });
 
+Deno.test({
+  name: "claude stops the backend when it is terminated",
+  // Deno only supports SIGTERM listeners on unix; the command skips them elsewhere.
+  ignore: Deno.build.os === "windows",
+  fn: async () => {
+    const { home, wrapper, modelName } = await makeFixture();
+    const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });
+    const port = (listener.addr as Deno.NetAddr).port;
+    listener.close();
+    const pidFile = join(home, "backend.pid");
+
+    // A claude that just waits, so freellama is still running when we kill it.
+    const fakeClaude = join(home, "claude");
+    await Deno.writeTextFile(fakeClaude, "#!/bin/sh\nsleep 60\n");
+    await Deno.chmod(fakeClaude, 0o755);
+
+    const proc = new Deno.Command(Deno.execPath(), {
+      args: [
+        "run",
+        "-A",
+        join(projectRoot, "src", "cli.ts"),
+        "claude",
+        "--port",
+        String(port),
+        modelName,
+      ],
+      env: {
+        FREELLAMA_HOME: home,
+        FREELLAMA_LLAMA_SERVER: wrapper,
+        FAKE_LLAMA_PID_FILE: pidFile,
+        PATH: `${home}:${Deno.env.get("PATH")}`,
+      },
+      stdout: "null",
+      stderr: "null",
+    }).spawn();
+
+    try {
+      await waitForServer(`http://127.0.0.1:${port}`);
+      // The backend starts lazily, so make a request to bring it up.
+      await (await fetch(`http://127.0.0.1:${port}/v1/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: modelName,
+          max_tokens: 8,
+          messages: [{ role: "user", content: "hi" }],
+        }),
+      })).body?.cancel();
+      const backendPid = Number(await Deno.readTextFile(pidFile));
+      assert(Number.isInteger(backendPid), `no backend pid recorded: ${backendPid}`);
+
+      proc.kill("SIGTERM");
+      await proc.status;
+
+      // Without cleanup the backend is reparented and keeps the model resident.
+      await poll(() => processGone(backendPid), (gone) => gone, {
+        interval: 100,
+        signal: AbortSignal.timeout(10_000),
+      });
+    } finally {
+      await Deno.remove(home, { recursive: true });
+    }
+  },
+});
+
+/** Whether a pid no longer refers to a live process. */
+function processGone(pid: number): boolean {
+  try {
+    // Signal 0 only probes for existence; it does not touch the process.
+    Deno.kill(pid, "SIGCONT");
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 Deno.test("claude reports a missing claude binary instead of failing obscurely", async () => {
   const { home, wrapper, modelName } = await makeFixture();
   const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });

@@ -14,6 +14,10 @@ const model = argValue("-m") ?? "unknown";
 const argsFile = Deno.env.get("FAKE_LLAMA_ARGS_FILE");
 if (argsFile) Deno.writeTextFileSync(argsFile, JSON.stringify(Deno.args));
 
+// Lets a test check whether this backend outlived the freellama that spawned it.
+const pidFile = Deno.env.get("FAKE_LLAMA_PID_FILE");
+if (pidFile) Deno.writeTextFileSync(pidFile, String(Deno.pid));
+
 Deno.serve({ hostname: "127.0.0.1", port }, async (req) => {
   const url = new URL(req.url);
   if (url.pathname === "/health") return new Response('{"status":"ok"}');

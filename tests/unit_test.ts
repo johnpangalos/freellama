@@ -92,6 +92,20 @@ Deno.test("matchQuant: parts of one split gguf are a single candidate", () => {
   assertEquals(matchQuant(parseHfRef("u/r:Q4_K_M"), ggufs).path, ggufs[0].path);
 });
 
+Deno.test("matchQuant: a vision repo's mmproj companion is not a rival model", () => {
+  // Real shape of unsloth/gemma-3-4b-it-GGUF and ggml-org/gemma-3-4b-it-GGUF:
+  // the projector carries the same precision label as the weights.
+  const ggufs = [entry("gemma-3-4b-it-BF16.gguf"), entry("mmproj-BF16.gguf")];
+  assertEquals(matchQuant(parseHfRef("u/r:BF16"), ggufs).path, "gemma-3-4b-it-BF16.gguf");
+  assertEquals(
+    matchQuant(parseHfRef("u/r:F16"), [
+      entry("gemma-3-4b-it-f16.gguf"),
+      entry("mmproj-model-f16.gguf"),
+    ]).path,
+    "gemma-3-4b-it-f16.gguf",
+  );
+});
+
 Deno.test("matchQuant: rejects an ambiguous quant instead of guessing", () => {
   const ggufs = [entry("m-Q4_0.gguf"), entry("m-Q4_1.gguf"), entry("m-Q4_K_M.gguf")];
   assertThrows(() => matchQuant(parseHfRef("u/r:Q4"), ggufs), Error, "ambiguous");
@@ -290,6 +304,47 @@ Deno.test("extractTarGz rejects entries that escape the install dir", async () =
   }
 });
 
+Deno.test("extractTarGz rejects an absolute symlink target", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "freellama-tar-" });
+  const outside = await Deno.makeTempDir({ prefix: "freellama-outside-" });
+  const victim = join(outside, "victim.txt");
+  await Deno.writeTextFile(victim, "original");
+  try {
+    // join() folds an absolute segment into the install dir, so an absolute
+    // target would pass a range check and then be written through by the file
+    // entry that follows it.
+    const evil = await makeTarGz([
+      { type: "symlink", path: "pkg/link", linkname: victim },
+      tarFile("pkg/link", "overwritten"),
+    ]);
+    await assertRejects(() => extractTarGz(evil, dir), Error, "absolute link target");
+    assertEquals(await Deno.readTextFile(victim), "original");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+    await Deno.remove(outside, { recursive: true });
+  }
+});
+
+Deno.test("extractTarGz does not write through a symlink left by an earlier entry", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "freellama-tar-" });
+  try {
+    // Both entries stay inside the install dir, so nothing escapes — but the
+    // file must replace the link rather than follow it to lib/real.txt.
+    await extractTarGz(
+      await makeTarGz([
+        tarFile("lib/real.txt", "original"),
+        { type: "symlink", path: "pkg/link", linkname: "../lib/real.txt" },
+        tarFile("pkg/link", "replacement"),
+      ]),
+      dir,
+    );
+    assertEquals(await Deno.readTextFile(join(dir, "lib", "real.txt")), "original");
+    assertEquals(await Deno.readTextFile(join(dir, "pkg", "link")), "replacement");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("extractTarGz rejects a symlink pointing outside the install dir", async () => {
   const dir = await Deno.makeTempDir({ prefix: "freellama-tar-" });
   try {
@@ -324,6 +379,14 @@ Deno.test("tokenizeArgs: quotes group values containing spaces", () => {
 Deno.test("tokenizeArgs: backslash escapes outside single quotes", () => {
   assertEquals(tokenizeArgs("--alias a\\ b"), ["--alias", "a b"]);
   assertEquals(tokenizeArgs("--alias 'a\\ b'"), ["--alias", "a\\ b"]);
+});
+
+Deno.test("tokenizeArgs: double quotes keep backslashes that are not escapes", () => {
+  // As in a POSIX shell, only " \ $ ` are escapable inside double quotes — so a
+  // Windows path keeps its separators instead of losing them to \t and \m.
+  assertEquals(tokenizeArgs('--tmpl "C:\\tmp\\t.jinja"'), ["--tmpl", "C:\\tmp\\t.jinja"]);
+  assertEquals(tokenizeArgs('--alias "say \\"hi\\""'), ["--alias", 'say "hi"']);
+  assertEquals(tokenizeArgs('--alias "a\\\\b"'), ["--alias", "a\\b"]);
 });
 
 Deno.test("tokenizeArgs: rejects an unterminated quote", () => {

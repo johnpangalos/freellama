@@ -4,7 +4,7 @@
 // freellama runs inference exclusively through llama.cpp (MIT licensed,
 // (c) The ggml authors) — see THIRD_PARTY_NOTICES.md.
 
-import { dirname, join, normalize, resolve, SEPARATOR } from "@std/path";
+import { dirname, isAbsolute, join, normalize, resolve, SEPARATOR } from "@std/path";
 import { walk } from "@std/fs";
 import { UntarStream } from "@std/tar/untar-stream";
 import { unzipSync } from "fflate";
@@ -197,6 +197,14 @@ export async function extractTarGz(
       // versioned target; dropping them would leave llama-server unable to link.
       // A symlink's target is relative to its own directory, a hard link's to
       // the archive root — either way it has to land inside installDir.
+      //
+      // Absolute targets are rejected outright rather than range-checked: join()
+      // treats an absolute segment as relative ("pkg" + "/etc/passwd" is
+      // "pkg/etc/passwd"), so folding one into the guard would hide it, and a
+      // later entry writing through the link would land on the real /etc/passwd.
+      if (isAbsolute(linkname)) {
+        throw new Error(`Refusing to extract "${path}": absolute link target "${linkname}"`);
+      }
       const target = safeDest(type === "2" ? join(dirname(path), linkname) : linkname);
       await Deno.mkdir(dirname(dest), { recursive: true });
       await Deno.remove(dest).catch(() => {});
@@ -211,6 +219,9 @@ export async function extractTarGz(
       continue;
     }
     await Deno.mkdir(dirname(dest), { recursive: true });
+    // Unlink first: Deno.create follows an existing symlink, so an archive that
+    // ships a link and then a file at the same path would write through it.
+    await Deno.remove(dest).catch(() => {});
     const file = await Deno.create(dest);
     if (entry.readable) await entry.readable.pipeTo(file.writable);
     else file.close();

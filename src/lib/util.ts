@@ -11,10 +11,22 @@ export function status(msg: string): void {
 /**
  * Split a command-line string into arguments the way a POSIX shell would:
  * whitespace separates, single and double quotes group, and a backslash escapes
- * the next character outside single quotes. No expansion of any kind — this is
- * only about quoting, so a flag value containing a space can be expressed
+ * the next character. No expansion of any kind — this is only about quoting, so
+ * a flag value containing a space can be expressed
  * (FREELLAMA_SERVER_ARGS='--chat-template "my template"').
  */
+/**
+ * Whether a backslash escapes `next` in the current quoting context. Single
+ * quotes take everything literally; double quotes escape only the four
+ * characters that are still special inside them, so a Windows path keeps its
+ * separators ("C:\tmp\t.jinja" survives, as it would in a shell).
+ */
+function isEscape(quote: '"' | "'" | undefined, next: string): boolean {
+  if (quote === "'") return false;
+  if (quote === '"') return next === '"' || next === "\\" || next === "$" || next === "`";
+  return true;
+}
+
 export function tokenizeArgs(input: string): string[] {
   const args: string[] = [];
   let current = "";
@@ -24,7 +36,7 @@ export function tokenizeArgs(input: string): string[] {
   let started = false;
   for (let i = 0; i < input.length; i++) {
     const char = input[i];
-    if (char === "\\" && quote !== "'" && i + 1 < input.length) {
+    if (char === "\\" && i + 1 < input.length && isEscape(quote, input[i + 1])) {
       current += input[++i];
       started = true;
     } else if (quote) {

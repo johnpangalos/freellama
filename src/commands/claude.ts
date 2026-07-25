@@ -103,8 +103,20 @@ export async function claudeCommand(args: string[]): Promise<void> {
   }
 
   // Ctrl+C is Claude Code's to handle (it interrupts a response); tearing the
-  // server down here would kill the model out from under a live session.
+  // server down here would kill the model out from under a live session. The
+  // normal exit path below cleans up once claude is actually done.
   Deno.addSignalListener("SIGINT", () => {});
+  // A terminal closing or an outright kill is different: without this the
+  // llama-server subprocess outlives us, holding a multi-gigabyte model in
+  // memory with nothing left to stop it.
+  if (Deno.build.os !== "windows") {
+    for (const signal of ["SIGTERM", "SIGHUP"] as const) {
+      Deno.addSignalListener(signal, async () => {
+        await server?.stop();
+        Deno.exit(128 + (signal === "SIGTERM" ? 15 : 1));
+      });
+    }
+  }
 
   const { code } = await child.status;
   await server?.stop();

@@ -181,7 +181,15 @@ export function matchQuant(ref: HfRef, ggufs: HfTreeEntry[]): HfTreeEntry {
   const exact = matches.filter((f) =>
     [`-${quant}.gguf`, `.${quant}.gguf`, `_${quant}.gguf`].some((s) => stem(f).endsWith(s))
   );
-  const candidates = exact.length > 0 ? exact : matches;
+  let candidates = exact.length > 0 ? exact : matches;
+  // A vision repo ships its multimodal projector next to the weights, named for
+  // the same precision (mmproj-F16.gguf beside model-F16.gguf). It is a
+  // companion file, never what a quant label refers to, so it must not make
+  // ":F16" look ambiguous — but it is still reachable as an explicit file path.
+  const withoutProjectors = candidates.filter((f) =>
+    !basename(f.path).toLowerCase().startsWith("mmproj")
+  );
+  if (withoutProjectors.length > 0) candidates = withoutProjectors;
 
   const models = new Map<string, HfTreeEntry>();
   for (const f of candidates) {

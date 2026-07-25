@@ -77,21 +77,41 @@ function authHeaders(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/**
+ * The `rel="next"` URL of a Link header, if present. Hugging Face paginates the
+ * tree API this way on large repos. Exported for tests.
+ */
+export function nextPageUrl(link: string | null): string | undefined {
+  if (!link) return undefined;
+  // Matched across the whole header rather than splitting on "," — a cursor
+  // value is free to contain one.
+  return link.match(/<([^>]+)>\s*;\s*rel\s*=\s*"?next"?/i)?.[1];
+}
+
 async function listRepoFiles(repo: string): Promise<HfTreeEntry[]> {
-  const url = `${HF_BASE}/api/models/${repo}/tree/main?recursive=true`;
-  const resp = await fetch(url, { headers: authHeaders() });
-  if (resp.status === 401 || resp.status === 403) {
-    throw new Error(
-      `Access to ${repo} denied (HTTP ${resp.status}). For gated models, set HF_TOKEN and accept the model's license on huggingface.co.`,
-    );
+  const entries: HfTreeEntry[] = [];
+  const seen = new Set<string>();
+  let url: string | undefined = `${HF_BASE}/api/models/${repo}/tree/main?recursive=true`;
+  while (url) {
+    const resp = await fetch(url, { headers: authHeaders() });
+    if (resp.status === 401 || resp.status === 403) {
+      throw new Error(
+        `Access to ${repo} denied (HTTP ${resp.status}). For gated models, set HF_TOKEN and accept the model's license on huggingface.co.`,
+      );
+    }
+    if (resp.status === 404) {
+      throw new Error(`Model repo "${repo}" not found on Hugging Face`);
+    }
+    if (!resp.ok) {
+      throw new Error(`Failed to list files of ${repo}: HTTP ${resp.status}`);
+    }
+    entries.push(...(await resp.json()) as HfTreeEntry[]);
+    // Follow pagination until exhausted; a repeated cursor would loop forever.
+    const next = nextPageUrl(resp.headers.get("link"));
+    url = next && !seen.has(next) ? next : undefined;
+    if (next) seen.add(next);
   }
-  if (resp.status === 404) {
-    throw new Error(`Model repo "${repo}" not found on Hugging Face`);
-  }
-  if (!resp.ok) {
-    throw new Error(`Failed to list files of ${repo}: HTTP ${resp.status}`);
-  }
-  return (await resp.json()) as HfTreeEntry[];
+  return entries;
 }
 
 /**
@@ -123,21 +143,7 @@ export async function resolveGguf(
       );
     }
   } else if (ref.quant) {
-    const quant = ref.quant.toLowerCase();
-    const matches = ggufs.filter((f) => {
-      const base = basename(f.path).toLowerCase();
-      return base.includes(`-${quant}.gguf`) || base.includes(`.${quant}.gguf`) ||
-        base.includes(`_${quant}.gguf`) || base.includes(quant);
-    });
-    if (matches.length === 0) {
-      throw new Error(
-        `No .gguf matching quant "${ref.quant}" in ${ref.repo}. Available:\n${ggufList(ggufs)}`,
-      );
-    }
-    // Prefer exact "-QUANT.gguf" suffix matches over loose substring hits,
-    // ignoring a trailing "-00001-of-00007" split-part suffix.
-    const stem = (f: HfTreeEntry) => basename(f.path).toLowerCase().replace(SPLIT_SUFFIX, ".gguf");
-    chosen = matches.find((f) => stem(f).endsWith(`-${quant}.gguf`)) ?? matches[0];
+    chosen = matchQuant(ref, ggufs);
   } else {
     throw new Error(
       `Specify a quant or file for ${ref.repo}. Available:\n${ggufList(ggufs)}\n` +
@@ -153,6 +159,43 @@ export async function resolveGguf(
     name,
     uri: toUri(name),
   };
+}
+
+/**
+ * The single .gguf a quant label refers to. Exact "-QUANT.gguf" suffix matches
+ * win over loose substring hits; when the label still matches more than one
+ * model the reference is ambiguous and we say so instead of guessing, since the
+ * wrong guess is a multi-gigabyte download. Exported for tests.
+ */
+export function matchQuant(ref: HfRef, ggufs: HfTreeEntry[]): HfTreeEntry {
+  const quant = ref.quant!.toLowerCase();
+  const matches = ggufs.filter((f) => basename(f.path).toLowerCase().includes(quant));
+  if (matches.length === 0) {
+    throw new Error(
+      `No .gguf matching quant "${ref.quant}" in ${ref.repo}. Available:\n${ggufList(ggufs)}`,
+    );
+  }
+  // Both comparisons ignore a trailing "-00001-of-00007" split-part suffix, so
+  // the parts of one split GGUF read as a single model rather than as rivals.
+  const stem = (f: HfTreeEntry) => basename(f.path).toLowerCase().replace(SPLIT_SUFFIX, ".gguf");
+  const exact = matches.filter((f) =>
+    [`-${quant}.gguf`, `.${quant}.gguf`, `_${quant}.gguf`].some((s) => stem(f).endsWith(s))
+  );
+  const candidates = exact.length > 0 ? exact : matches;
+
+  const models = new Map<string, HfTreeEntry>();
+  for (const f of candidates) {
+    const key = f.path.toLowerCase().replace(SPLIT_SUFFIX, ".gguf");
+    if (!models.has(key)) models.set(key, f);
+  }
+  if (models.size > 1) {
+    throw new Error(
+      `Quant "${ref.quant}" is ambiguous in ${ref.repo} — ${models.size} models match:\n` +
+        `${ggufList([...models.values()])}\n` +
+        `Use a more specific quant, or the exact file: freellama pull hf:${ref.repo}/<file.gguf>`,
+    );
+  }
+  return candidates[0];
 }
 
 function ggufList(files: HfTreeEntry[]): string {

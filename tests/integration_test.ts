@@ -5,6 +5,7 @@
 import { assert, assertEquals } from "@std/assert";
 import { poll } from "@std/async";
 import { fromFileUrl, join } from "@std/path";
+import { parseHfRef, resolveGguf } from "../src/lib/hf.ts";
 import { startLlamaServer } from "../src/lib/runner.ts";
 import { streamChat } from "../src/lib/openai.ts";
 import { pullModel } from "../src/commands/pull.ts";
@@ -94,6 +95,33 @@ Deno.test("pull downloads every part of a split gguf and rm removes them all", a
     if (prevHome === undefined) Deno.env.delete("FREELLAMA_HOME");
     else Deno.env.set("FREELLAMA_HOME", prevHome);
     await Deno.remove(home, { recursive: true });
+  }
+});
+
+Deno.test("resolveGguf follows the tree API's Link pagination", async () => {
+  const realFetch = globalThis.fetch;
+  const page2 = "https://huggingface.co/api/models/user/repo/tree/main?cursor=next";
+  globalThis.fetch = ((input: URL | Request | string, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    // The wanted quant only appears on the second page.
+    if (url === page2) {
+      return Promise.resolve(Response.json([{ type: "file", path: "m-Q8_0.gguf", size: 8 }]));
+    }
+    if (url.includes("/api/models/user/repo/tree/main")) {
+      return Promise.resolve(
+        Response.json([{ type: "file", path: "m-Q4_K_M.gguf", size: 4 }], {
+          headers: { link: `<${page2}>; rel="next"` },
+        }),
+      );
+    }
+    return realFetch(input, init);
+  }) as typeof fetch;
+
+  try {
+    const resolved = await resolveGguf(parseHfRef("hf:user/repo:Q8_0"));
+    assertEquals(resolved.files.map((f) => f.remotePath), ["m-Q8_0.gguf"]);
+  } finally {
+    globalThis.fetch = realFetch;
   }
 });
 

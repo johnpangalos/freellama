@@ -1,7 +1,14 @@
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import { join } from "@std/path";
 import { zipSync } from "fflate";
-import { type HfTreeEntry, parseHfRef, refToName, splitParts } from "../src/lib/hf.ts";
+import {
+  type HfTreeEntry,
+  matchQuant,
+  nextPageUrl,
+  parseHfRef,
+  refToName,
+  splitParts,
+} from "../src/lib/hf.ts";
 import { extractZip, pickAsset } from "../src/lib/backend.ts";
 import { formatBytes } from "../src/lib/util.ts";
 
@@ -67,6 +74,48 @@ Deno.test("splitParts: rejects a group with missing parts", () => {
     Error,
     "m-Q4-00002-of-00003.gguf",
   );
+});
+
+Deno.test("matchQuant: exact suffix match wins over loose substring hits", () => {
+  const ggufs = [entry("m-Q4_K_M.gguf"), entry("m-Q4_K_M-imat.gguf")];
+  assertEquals(matchQuant(parseHfRef("u/r:Q4_K_M"), ggufs).path, "m-Q4_K_M.gguf");
+});
+
+Deno.test("matchQuant: parts of one split gguf are a single candidate", () => {
+  const ggufs = [
+    entry("Q4_K_M/m-Q4_K_M-00001-of-00002.gguf"),
+    entry("Q4_K_M/m-Q4_K_M-00002-of-00002.gguf"),
+  ];
+  assertEquals(matchQuant(parseHfRef("u/r:Q4_K_M"), ggufs).path, ggufs[0].path);
+});
+
+Deno.test("matchQuant: rejects an ambiguous quant instead of guessing", () => {
+  const ggufs = [entry("m-Q4_0.gguf"), entry("m-Q4_1.gguf"), entry("m-Q4_K_M.gguf")];
+  assertThrows(() => matchQuant(parseHfRef("u/r:Q4"), ggufs), Error, "ambiguous");
+});
+
+Deno.test("matchQuant: reports the candidates it could not choose between", () => {
+  const ggufs = [entry("m-Q4_0.gguf"), entry("m-Q4_1.gguf")];
+  assertThrows(() => matchQuant(parseHfRef("u/r:Q4"), ggufs), Error, "m-Q4_1.gguf");
+});
+
+Deno.test("matchQuant: no match lists what the repo does have", () => {
+  assertThrows(
+    () => matchQuant(parseHfRef("u/r:Q9"), [entry("m-Q4_0.gguf")]),
+    Error,
+    "m-Q4_0.gguf",
+  );
+});
+
+Deno.test("nextPageUrl: reads rel=next out of a Link header", () => {
+  assertEquals(
+    nextPageUrl(
+      '<https://huggingface.co/api/models/u/r/tree/main?cursor=eyJhIjoxfQ%3D%3D>; rel="next"',
+    ),
+    "https://huggingface.co/api/models/u/r/tree/main?cursor=eyJhIjoxfQ%3D%3D",
+  );
+  assertEquals(nextPageUrl('<https://example.com/prev>; rel="prev"'), undefined);
+  assertEquals(nextPageUrl(null), undefined);
 });
 
 // Current llama.cpp releases ship macOS/Linux builds as .tar.gz and Windows as .zip.

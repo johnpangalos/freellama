@@ -389,6 +389,101 @@ Deno.test("serve proxies /v1/models and /v1/chat/completions (json + sse)", asyn
   }
 });
 
+Deno.test("claude launches Claude Code pointed at the local model", async () => {
+  const { home, wrapper, modelName } = await makeFixture();
+  const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });
+  const port = (listener.addr as Deno.NetAddr).port;
+  listener.close();
+
+  // A stand-in for the `claude` binary: records what it was launched with, then
+  // exits non-zero so we can check the status is propagated.
+  const recorded = join(home, "claude-launch.json");
+  const fakeClaude = join(home, "claude");
+  await Deno.writeTextFile(
+    fakeClaude,
+    `#!/bin/sh
+"${Deno.execPath()}" eval "
+  await Deno.writeTextFile('${recorded}', JSON.stringify({
+    env: Deno.env.toObject(),
+    args: Deno.args,
+    reachable: await (await fetch(Deno.env.get('ANTHROPIC_BASE_URL'))).text(),
+  }));
+" -- "$@"
+exit 7
+`,
+  );
+  await Deno.chmod(fakeClaude, 0o755);
+
+  try {
+    const out = await new Deno.Command(Deno.execPath(), {
+      args: [
+        "run",
+        "-A",
+        join(projectRoot, "src", "cli.ts"),
+        "claude",
+        "--port",
+        String(port),
+        modelName,
+        "--",
+        "--resume",
+      ],
+      env: {
+        FREELLAMA_HOME: home,
+        FREELLAMA_LLAMA_SERVER: wrapper,
+        PATH: `${home}:${Deno.env.get("PATH")}`,
+      },
+      stdout: "null",
+      stderr: "piped",
+    }).output();
+
+    assertEquals(out.code, 7, new TextDecoder().decode(out.stderr));
+    const launch = JSON.parse(await Deno.readTextFile(recorded));
+    assertEquals(launch.args, ["--resume"]);
+    assertEquals(launch.env.ANTHROPIC_BASE_URL, `http://127.0.0.1:${port}`);
+    assertEquals(launch.env.ANTHROPIC_API_KEY, "local");
+    // Every tier maps to the one model that is loaded, subagents included.
+    assertEquals(launch.env.ANTHROPIC_DEFAULT_OPUS_MODEL, modelName);
+    assertEquals(launch.env.ANTHROPIC_DEFAULT_SONNET_MODEL, modelName);
+    assertEquals(launch.env.ANTHROPIC_DEFAULT_HAIKU_MODEL, modelName);
+    // Left on, this busts llama.cpp's prompt cache on every request.
+    assertEquals(launch.env.CLAUDE_CODE_ATTRIBUTION_HEADER, "0");
+    // The server really was up while claude ran.
+    assert(launch.reachable.includes("freellama is running"), `base url: ${launch.reachable}`);
+  } finally {
+    await Deno.remove(home, { recursive: true });
+  }
+});
+
+Deno.test("claude reports a missing claude binary instead of failing obscurely", async () => {
+  const { home, wrapper, modelName } = await makeFixture();
+  const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });
+  const port = (listener.addr as Deno.NetAddr).port;
+  listener.close();
+
+  try {
+    const out = await new Deno.Command(Deno.execPath(), {
+      args: [
+        "run",
+        "-A",
+        join(projectRoot, "src", "cli.ts"),
+        "claude",
+        "--port",
+        String(port),
+        modelName,
+      ],
+      // An empty PATH: there is no `claude` to find.
+      env: { FREELLAMA_HOME: home, FREELLAMA_LLAMA_SERVER: wrapper, PATH: home },
+      stdout: "null",
+      stderr: "piped",
+    }).output();
+    const stderr = new TextDecoder().decode(out.stderr);
+    assert(out.code !== 0, "must exit non-zero when claude is missing");
+    assert(stderr.includes("claude.com/claude-code"), `stderr was: ${stderr}`);
+  } finally {
+    await Deno.remove(home, { recursive: true });
+  }
+});
+
 Deno.test("serve proxies the Anthropic Messages API (json + sse + count_tokens)", async () => {
   const { home, wrapper, modelName } = await makeFixture();
   const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });

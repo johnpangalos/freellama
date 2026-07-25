@@ -84,18 +84,31 @@ function forwardedHeaders(req: Request): Headers {
   return headers;
 }
 
-export async function serveCommand(args: string[]): Promise<void> {
-  const flags = parseArgs(args, {
-    string: ["host", "port", "ctx"],
-    default: { host: "127.0.0.1", port: "11434" },
-  });
-  const hostname = flags.host;
-  const port = Number(flags.port);
-  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-    throw new Error(`Invalid port "${flags.port}"`);
-  }
-  const contextSize = resolveContextSize(flags.ctx);
+export interface ServeOptions {
+  hostname: string;
+  port: number;
+  contextSize: number;
+  /** Called once the socket is listening; `serve` prints its banner from here. */
+  onListen?: (addr: { hostname: string; port: number }) => void;
+}
 
+export interface FrontServer {
+  baseUrl: string;
+  /** Shut the front server down along with the llama-server behind it. */
+  stop: () => Promise<void>;
+  /** Resolves when the server has shut down. */
+  finished: Promise<void>;
+}
+
+/** Default port, matching Ollama's so existing client configs work unchanged. */
+export const DEFAULT_PORT = 11434;
+
+/**
+ * Start the front server. Exposed separately from serveCommand so `freellama
+ * claude` can run one in-process for the lifetime of a Claude Code session.
+ */
+export async function startFrontServer(opts: ServeOptions): Promise<FrontServer> {
+  const { hostname, port, contextSize } = opts;
   const serverBin = await ensureLlamaServer();
 
   let backend: Backend | null = null;
@@ -227,21 +240,49 @@ export async function serveCommand(args: string[]): Promise<void> {
   const server = Deno.serve({
     hostname,
     port,
-    onListen: ({ hostname, port }) => {
-      status(`freellama listening on http://${hostname}:${port}/v1`);
-      status("point any OpenAI client at this base URL (any api key works)");
-      if (hostname !== "127.0.0.1" && hostname !== "localhost") {
+    onListen: (addr) => {
+      opts.onListen?.(addr);
+      if (addr.hostname !== "127.0.0.1" && addr.hostname !== "localhost") {
         status(
-          `warning: serving on ${hostname} without authentication — anyone who can reach it can use your models`,
+          `warning: serving on ${addr.hostname} without authentication — anyone who can reach it can use your models`,
         );
       }
     },
   }, handler);
 
+  return {
+    baseUrl: `http://${hostname}:${port}`,
+    finished: server.finished,
+    stop: async () => {
+      await backend?.handle.stop();
+      await server.shutdown();
+    },
+  };
+}
+
+export async function serveCommand(args: string[]): Promise<void> {
+  const flags = parseArgs(args, {
+    string: ["host", "port", "ctx"],
+    default: { host: "127.0.0.1", port: String(DEFAULT_PORT) },
+  });
+  const port = Number(flags.port);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    throw new Error(`Invalid port "${flags.port}"`);
+  }
+
+  const server = await startFrontServer({
+    hostname: flags.host,
+    port,
+    contextSize: resolveContextSize(flags.ctx),
+    onListen: ({ hostname, port }) => {
+      status(`freellama listening on http://${hostname}:${port}/v1`);
+      status("point any OpenAI or Anthropic client at this base URL (any api key works)");
+    },
+  });
+
   const shutdown = async () => {
     status("\nshutting down...");
-    await backend?.handle.stop();
-    await server.shutdown();
+    await server.stop();
     Deno.exit(0);
   };
   Deno.addSignalListener("SIGINT", shutdown);

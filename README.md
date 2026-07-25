@@ -42,6 +42,7 @@ deno task compile   # or build a standalone binary: ./freellama
 | `list` / `ls`                           | List installed models                                                                |
 | `rm <model>`                            | Remove an installed model                                                            |
 | `serve [--host H] [--port P] [--ctx N]` | OpenAI-compatible server (default `127.0.0.1:11434`)                                 |
+| `claude [--ctx N] [--port P] <model>`   | Run Claude Code against a local model                                                |
 | `upgrade`                               | Install the latest llama.cpp backend release                                         |
 
 In the REPL: `/clear` resets the conversation, `/bye` (or Ctrl+D) exits, Ctrl+C interrupts a
@@ -108,6 +109,36 @@ reply = client.chat.completions.create(
     messages=[{"role": "user", "content": "Hi"}],
 )
 ```
+
+## Running Claude Code locally
+
+```bash
+freellama claude hf:unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q4_K_M
+```
+
+Pulls the model if it isn't installed, starts a server (or reuses one already on the port), and
+launches `claude` against it — every model tier, subagents included, mapped to the local model.
+Arguments after the model are passed through: `freellama claude <model> -- --resume`.
+
+The intended workflow is hybrid, not a replacement:
+
+1. **Plan** with a frontier model on your normal plan — Claude Code's plan mode, writing the plan to
+   a file.
+2. **Implement** with `freellama claude <model>` in the same repo, working from that plan. This is
+   the bulk of the tokens, and it's free.
+3. **Review** the resulting diff back on the frontier model.
+
+Be honest with yourself about what this buys you. A 30B-class local coding model (Qwen3-Coder,
+Devstral, GLM-Air) can carry a well-scoped implementation from a good plan; it will not carry an
+ambiguous task, and it is not a frontier model. This offloads the easy majority of the work — the
+hard parts still want the big model.
+
+Two details the launcher handles that are easy to miss by hand:
+
+- `CLAUDE_CODE_ATTRIBUTION_HEADER=0`. That header changes per request, and llama.cpp keys its prompt
+  cache on the whole prefix, so leaving it on re-processes the entire context every turn.
+- Context. Claude Code's system prompt alone is 20–30k tokens, so the launcher uses the same 32768
+  default as `serve`; pass `--ctx` to change it.
 
 ## Configuration
 

@@ -9,6 +9,7 @@ import { listCommand } from "./commands/list.ts";
 import { rmCommand } from "./commands/rm.ts";
 import { runCommand } from "./commands/run.ts";
 import { serveCommand } from "./commands/serve.ts";
+import { claudeCommand } from "./commands/claude.ts";
 import { upgradeCommand } from "./commands/upgrade.ts";
 import manifest from "../.release-please-manifest.json" with { type: "json" };
 
@@ -29,6 +30,8 @@ Commands:
   rm <model>              Remove an installed model
   serve [--host H] [--port P] [--ctx N]
                           Start an OpenAI-compatible server (default 127.0.0.1:11434)
+  claude [--ctx N] [--port P] <model> [-- claude args]
+                          Run Claude Code against a local model
   upgrade                 Install the latest llama.cpp backend release
 
 Options:
@@ -58,6 +61,8 @@ async function main() {
       return await rmCommand(rest);
     case "serve":
       return await serveCommand(rest);
+    case "claude":
+      return await claudeCommand(rest);
     case "upgrade":
       return await upgradeCommand(rest);
     case "--version":

@@ -4,6 +4,7 @@ import { zipSync } from "fflate";
 import { type HfTreeEntry, parseHfRef, refToName, splitParts } from "../src/lib/hf.ts";
 import { extractZip, pickAsset } from "../src/lib/backend.ts";
 import { formatBytes } from "../src/lib/util.ts";
+import { buildPiProvider, mergePiConfig, PI_PROVIDER } from "../src/lib/pi.ts";
 
 Deno.test("parseHfRef: repo with quant", () => {
   assertEquals(parseHfRef("hf:Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M"), {
@@ -135,4 +136,56 @@ Deno.test("extractZip rejects entries that escape the install dir (zip-slip)", a
 Deno.test("formatBytes", () => {
   assertEquals(formatBytes(500), "500 B");
   assertEquals(formatBytes(398_000_000), "398 MB");
+});
+
+Deno.test("buildPiProvider: one entry per model, context from the caller", () => {
+  const provider = buildPiProvider("http://127.0.0.1:11434/v1", ["a/b:Q4_K_M", "c/d:Q8_0"], 8192);
+  assertEquals(provider.api, "openai-completions");
+  assertEquals(provider.baseUrl, "http://127.0.0.1:11434/v1");
+  assertEquals(provider.models.map((m) => m.id), ["a/b:Q4_K_M", "c/d:Q8_0"]);
+  // Left unset, pi would assume 128k and overflow llama-server's KV cache.
+  assertEquals(provider.models.map((m) => m.contextWindow), [8192, 8192]);
+});
+
+Deno.test("mergePiConfig: writes a whole config when none exists", () => {
+  const provider = buildPiProvider("http://127.0.0.1:11434/v1", ["a/b:Q4_K_M"], 4096);
+  const parsed = JSON.parse(mergePiConfig(undefined, provider));
+  assertEquals(parsed.providers[PI_PROVIDER].models[0].id, "a/b:Q4_K_M");
+});
+
+Deno.test("mergePiConfig: preserves other providers and unknown top-level keys", () => {
+  const existing = JSON.stringify({
+    providers: {
+      openai: { baseUrl: "https://api.openai.com/v1", models: [{ id: "gpt-4" }] },
+    },
+    someOtherSetting: { keep: true },
+  });
+  const provider = buildPiProvider("http://127.0.0.1:11434/v1", ["a/b:Q4_K_M"], 4096);
+  const parsed = JSON.parse(mergePiConfig(existing, provider));
+  assertEquals(parsed.providers.openai.models[0].id, "gpt-4");
+  assertEquals(parsed.someOtherSetting, { keep: true });
+  assertEquals(parsed.providers[PI_PROVIDER].baseUrl, "http://127.0.0.1:11434/v1");
+});
+
+Deno.test("mergePiConfig: replaces a stale freellama provider rather than merging into it", () => {
+  const existing = JSON.stringify({
+    providers: { [PI_PROVIDER]: { baseUrl: "http://old:1/v1", models: [{ id: "removed" }] } },
+  });
+  const provider = buildPiProvider("http://127.0.0.1:11434/v1", ["a/b:Q4_K_M"], 4096);
+  const parsed = JSON.parse(mergePiConfig(existing, provider));
+  assertEquals(parsed.providers[PI_PROVIDER].models.map((m: { id: string }) => m.id), [
+    "a/b:Q4_K_M",
+  ]);
+  assertEquals(parsed.providers[PI_PROVIDER].baseUrl, "http://127.0.0.1:11434/v1");
+});
+
+Deno.test("mergePiConfig: treats an empty file as no config", () => {
+  const provider = buildPiProvider("http://127.0.0.1:11434/v1", ["a/b:Q4_K_M"], 4096);
+  assertEquals(JSON.parse(mergePiConfig("  \n", provider)).providers[PI_PROVIDER].models.length, 1);
+});
+
+Deno.test("mergePiConfig: refuses to clobber a file it cannot parse", () => {
+  const provider = buildPiProvider("http://127.0.0.1:11434/v1", ["a/b:Q4_K_M"], 4096);
+  assertThrows(() => mergePiConfig("{ not json", provider), Error, "not valid JSON");
+  assertThrows(() => mergePiConfig("[1, 2]", provider), Error, "must contain a JSON object");
 });

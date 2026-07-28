@@ -9,6 +9,7 @@ import { listCommand } from "./commands/list.ts";
 import { rmCommand } from "./commands/rm.ts";
 import { runCommand } from "./commands/run.ts";
 import { serveCommand } from "./commands/serve.ts";
+import { piConfigCommand } from "./commands/pi.ts";
 import manifest from "../.release-please-manifest.json" with { type: "json" };
 
 // The Release Please manifest is the version's source of truth; the JSON
@@ -27,6 +28,8 @@ Commands:
   rm <model>              Remove an installed model
   serve [--host H] [--port P]
                           Start an OpenAI-compatible server (default 127.0.0.1:11434)
+  pi-config [--write]     Print a pi (coding agent) provider config for the
+                          installed models; --write merges it into ~/.pi/agent/models.json
 
 Environment:
   FREELLAMA_HOME            Data directory (default ~/.freellama)
@@ -52,6 +55,8 @@ async function main() {
       return await rmCommand(rest);
     case "serve":
       return await serveCommand(rest);
+    case "pi-config":
+      return await piConfigCommand(rest);
     case "--version":
     case "-v":
       return console.log(`freellama ${VERSION}`);

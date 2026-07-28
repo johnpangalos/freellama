@@ -42,6 +42,7 @@ deno task compile   # or build a standalone binary: ./freellama
 | `list` / `ls`                 | List installed models                                                                |
 | `rm <model>`                  | Remove an installed model                                                            |
 | `serve [--host H] [--port P]` | OpenAI-compatible server (default `127.0.0.1:11434`)                                 |
+| `pi-config [--write]`         | Print (or install) a [pi](https://github.com/earendil-works/pi) provider config      |
 
 In the REPL: `/clear` resets the conversation, `/bye` (or Ctrl+D) exits, Ctrl+C interrupts a
 response without exiting. Piping stdin (`echo "hi" | freellama run <model>`) skips the prompts and
@@ -86,6 +87,35 @@ reply = client.chat.completions.create(
     messages=[{"role": "user", "content": "Hi"}],
 )
 ```
+
+## Coding agents
+
+Any agent that speaks OpenAI chat-completions can use `freellama serve` as its backend.
+[pi](https://github.com/earendil-works/pi) is a good fit — it's a small MIT-licensed terminal coding
+agent that reads custom providers from `~/.pi/agent/models.json`.
+
+```bash
+freellama pi-config --write   # add a "freellama" provider for your installed models
+freellama serve               # in another shell
+pi --provider freellama --model Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M
+```
+
+`pi-config` prints the config to stdout by default; `--write` merges it into
+`~/.pi/agent/models.json`, replacing only the `freellama` key so your other providers survive. It
+sets each model's `contextWindow` from `FREELLAMA_CTX` — pi otherwise assumes 128k and will happily
+grow a conversation past what `llama-server` was started with. Re-run it after pulling or removing
+models.
+
+### Handing context off from Claude Code
+
+`.claude/skills/handoff/SKILL.md` is a [Claude Code](https://claude.com/claude-code) skill that
+packages the current task into a self-contained bundle under `.freellama/handoffs/` and starts pi
+against your local model. The point is that the local model gets none of the originating
+conversation, so the skill's job is writing a brief that stands on its own: concrete file paths, the
+state of play, and a command that decides whether the work is done.
+
+Ask Claude Code to "hand this off to the local model" and it'll take it from there. Bundles are
+plain markdown — read them, edit them, or feed them to pi yourself.
 
 ## Configuration
 

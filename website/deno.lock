@@ -12,7 +12,7 @@
     "npm:react@19.2.8": "19.2.8",
     "npm:tailwindcss@4.3.3": "4.3.3",
     "npm:typescript@7.0.2": "7.0.2",
-    "npm:wrangler@4.114.0": "4.114.0"
+    "npm:wrangler@4.115.0": "4.115.0"
   },
   "npm": {
     "@astrojs/check@0.9.10_typescript@7.0.2": {
@@ -857,8 +857,6 @@
     "@napi-rs/wasm-runtime@1.2.0_@emnapi+core@1.11.1_@emnapi+runtime@1.11.1": {
       "integrity": "sha512-kDoONqMa+VnZ4vvvu/ZUurpJ4gkZU57e7g69qpNgWhYcZFPUHZM2CEMKm+cG6ufDVALbjMvfmMjFVqaK7uEMnA==",
       "dependencies": [
-        "@emnapi/core@1.11.1",
-        "@emnapi/runtime@1.11.1",
         "@tybys/wasm-util"
       ]
     },
@@ -2195,8 +2193,8 @@
     "micromark-util-types@2.0.2": {
       "integrity": "sha512-Yw0ECSpJoViF1qTU4DC6NwtC4aWGt1EkzaQB8KPPyCRR8z9TWeV0HbEFGTO+ZY1wB22zmxnJqhPyTpOVCpeHTA=="
     },
-    "miniflare@4.20260722.0": {
-      "integrity": "sha512-LW6ABMhCx/yIEFBLC/DO4yAhdm2T/G7jp7pr5T2kj895+CCIaHZqpMXdW9O6YE48LcYcCJChwWc8aEs1vpbTXw==",
+    "miniflare@4.20260722.1": {
+      "integrity": "sha512-FJIg4omaCb2wwSyOeRosEdmVRi3JzGAOOH3pa3twmmtvWECl6BVZMIDwJbjByLKRyU+mrfk0M/n3oSiojFZvSA==",
       "dependencies": [
         "@cspotcode/source-map-support",
         "sharp",
@@ -2921,8 +2919,8 @@
       "scripts": true,
       "bin": true
     },
-    "wrangler@4.114.0": {
-      "integrity": "sha512-M65P25t5UHA1TIJfgZXDcj+YzVobgKdRguM2QPz0xnxLFuOcuE3ErgllDht0iaho7MS4o0g/Bb4YK2+GT+bibg==",
+    "wrangler@4.115.0": {
+      "integrity": "sha512-+upG2VW66M1sjb43yzgUZ6Ss8iYpJ6+7F3U4GF8TY5EYd+08sYdS54d24AEwCnhuef3J9KlSPusqiqR9WYy1UA==",
       "dependencies": [
         "@cloudflare/kv-asset-handler",
         "@cloudflare/unenv-preset",
@@ -3035,7 +3033,7 @@
         "npm:react@19.2.8",
         "npm:tailwindcss@4.3.3",
         "npm:typescript@7.0.2",
-        "npm:wrangler@4.114.0"
+        "npm:wrangler@4.115.0"
       ]
     }
   }

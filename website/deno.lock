@@ -12,7 +12,7 @@
     "npm:react@19.2.8": "19.2.8",
     "npm:tailwindcss@4.3.3": "4.3.3",
     "npm:typescript@7.0.2": "7.0.2",
-    "npm:wrangler@4.116.0": "4.116.0"
+    "npm:wrangler@4.118.0": "4.118.0"
   },
   "npm": {
     "@astrojs/check@0.9.10_typescript@7.0.2": {
@@ -857,8 +857,6 @@
     "@napi-rs/wasm-runtime@1.2.2_@emnapi+core@1.11.1_@emnapi+runtime@1.11.1": {
       "integrity": "sha512-JfB4kuJQjaoHuCTseIINHtHWeJnvgEcxjwA5t/Y00ZgaOO1Crz3fjT/p8kT28zA/Caz7oiUMn3d6H2yOVCVwuw==",
       "dependencies": [
-        "@emnapi/core@1.11.1",
-        "@emnapi/runtime@1.11.1",
         "@tybys/wasm-util"
       ]
     },
@@ -866,7 +864,6 @@
       "integrity": "sha512-JfB4kuJQjaoHuCTseIINHtHWeJnvgEcxjwA5t/Y00ZgaOO1Crz3fjT/p8kT28zA/Caz7oiUMn3d6H2yOVCVwuw==",
       "dependencies": [
         "@emnapi/core@2.0.0-alpha.3",
-        "@emnapi/runtime@1.11.3",
         "@tybys/wasm-util"
       ]
     },
@@ -1400,7 +1397,7 @@
         "emmet",
         "jsonc-parser@2.3.1",
         "vscode-languageserver-textdocument",
-        "vscode-languageserver-types@3.18.0",
+        "vscode-languageserver-types",
         "vscode-uri"
       ]
     },
@@ -2203,8 +2200,8 @@
     "micromark-util-types@2.0.2": {
       "integrity": "sha512-Yw0ECSpJoViF1qTU4DC6NwtC4aWGt1EkzaQB8KPPyCRR8z9TWeV0HbEFGTO+ZY1wB22zmxnJqhPyTpOVCpeHTA=="
     },
-    "miniflare@4.20260730.0": {
-      "integrity": "sha512-1Z9SB9r/o//80UA02Re3QhtcecSHAyAjf5EcKBfQVlQrCg7Miy79hl2PvtkwFLIaJ5rcrOPdDcRr577okwZPsg==",
+    "miniflare@5.20260730.0-alpha": {
+      "integrity": "sha512-8/dspSXDshP6nSkCpjKO7BYc2qZoYSXm7iM+QxY7qJyJpAB3onnQSaiu0cvKJlfuMGwULl55hG69FJCcCMXU1Q==",
       "dependencies": [
         "@cspotcode/source-map-support",
         "sharp",
@@ -2212,8 +2209,7 @@
         "workerd",
         "ws",
         "youch"
-      ],
-      "bin": true
+      ]
     },
     "mrmime@2.0.1": {
       "integrity": "sha512-Y3wQdFg2Va6etvQ5I82yUhGdsKrcYox6p7FfL1LbK2J4V01F9TGlepTIhnK24t7koZibmg82KGglhA1XK5IsLQ=="
@@ -2862,7 +2858,7 @@
       "dependencies": [
         "@vscode/l10n",
         "vscode-languageserver-textdocument",
-        "vscode-languageserver-types@3.17.5",
+        "vscode-languageserver-types",
         "vscode-uri"
       ]
     },
@@ -2871,7 +2867,7 @@
       "dependencies": [
         "@vscode/l10n",
         "vscode-languageserver-textdocument",
-        "vscode-languageserver-types@3.18.0",
+        "vscode-languageserver-types",
         "vscode-uri"
       ]
     },
@@ -2880,7 +2876,7 @@
       "dependencies": [
         "jsonc-parser@3.3.1",
         "vscode-languageserver-textdocument",
-        "vscode-languageserver-types@3.18.0",
+        "vscode-languageserver-types",
         "vscode-nls",
         "vscode-uri"
       ]
@@ -2892,7 +2888,7 @@
       "integrity": "sha512-mb1bvRJN8SVznADSGWM9u/b07H7Ecg0I3OgXDuLdn307rl/J3A9YD6/eYOssqhecL27hK1IPZAsaqh00i/Jljg==",
       "dependencies": [
         "vscode-jsonrpc",
-        "vscode-languageserver-types@3.17.5"
+        "vscode-languageserver-types"
       ]
     },
     "vscode-languageserver-textdocument@1.0.12": {
@@ -2900,9 +2896,6 @@
     },
     "vscode-languageserver-types@3.17.5": {
       "integrity": "sha512-Ld1VelNuX9pdF39h2Hgaeb5hEZM2Z3jUrrMgWQAu82jMtZp7p3vJT3BzToKtZI7NgQssZje5o0zryOrhQvzQAg=="
-    },
-    "vscode-languageserver-types@3.18.0": {
-      "integrity": "sha512-8TsGPNMIMiiBdkORgRSvLjuiEIiAFtO+KssmYWxQ+uSVvlf7RjK8YKCOjPzZ+YA04jXEV7+7LvkSmHkhpNS99g=="
     },
     "vscode-languageserver@9.0.1": {
       "integrity": "sha512-woByF3PDpkHFUreUa7Hos7+pUWdeWMXRd26+ZX2A8cFx6v/JPTtd4/uN0/jB6XQHYaOlHbio03NTHCqrgG5n7g==",
@@ -2932,8 +2925,8 @@
       "scripts": true,
       "bin": true
     },
-    "wrangler@4.116.0": {
-      "integrity": "sha512-wP1PXxH5KJajfGEjty0NNqyxAirTFvMZpGyB5CRqEIiY0fL/SiCKtIYAJB9HXq0MP0sMXB/i/YSls+WObahAhw==",
+    "wrangler@4.118.0": {
+      "integrity": "sha512-9pkBw/b8zWqGx2S+oLhgHMR1M/4VOE8SynUFABnGWiSFGlcOQ4xiI/B71Xf66RYP2xzngU37IQFPtUruij3lYw==",
       "dependencies": [
         "@cloudflare/kv-asset-handler",
         "@cloudflare/unenv-preset",
@@ -2981,7 +2974,7 @@
         "vscode-json-languageservice",
         "vscode-languageserver",
         "vscode-languageserver-textdocument",
-        "vscode-languageserver-types@3.18.0",
+        "vscode-languageserver-types",
         "vscode-uri",
         "yaml"
       ],
@@ -3046,7 +3039,7 @@
         "npm:react@19.2.8",
         "npm:tailwindcss@4.3.3",
         "npm:typescript@7.0.2",
-        "npm:wrangler@4.116.0"
+        "npm:wrangler@4.118.0"
       ]
     }
   }

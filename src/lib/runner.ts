@@ -24,12 +24,23 @@ function freePort(): number {
   return port;
 }
 
-const READY_TIMEOUT_MS = 180_000;
+const DEFAULT_READY_TIMEOUT_S = 180;
+
+/**
+ * Seconds to wait for llama-server to become ready, from
+ * FREELLAMA_READY_TIMEOUT. Large models (tens of GB) can take longer than the
+ * default 180 s to load from disk. Exported for tests.
+ */
+export function readyTimeoutSeconds(): number {
+  const raw = Number(Deno.env.get("FREELLAMA_READY_TIMEOUT"));
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_READY_TIMEOUT_S;
+}
 
 export async function startLlamaServer(opts: StartOptions): Promise<LlamaServerHandle> {
   const port = freePort();
   const debug = Deno.env.get("FREELLAMA_DEBUG") === "1";
   const contextSize = opts.contextSize ?? Number(Deno.env.get("FREELLAMA_CTX") ?? 4096);
+  const readyTimeoutS = readyTimeoutSeconds();
 
   const args = [
     "-m",
@@ -77,12 +88,15 @@ export async function startLlamaServer(opts: StartOptions): Promise<LlamaServerH
         }
       },
       (healthy) => healthy,
-      { interval: 300, signal: AbortSignal.timeout(READY_TIMEOUT_MS) },
+      { interval: 300, signal: AbortSignal.timeout(readyTimeoutS * 1000) },
     );
   } catch (err) {
     if (err instanceof DOMException && err.name === "TimeoutError") {
       proc.kill("SIGKILL");
-      throw new Error(`llama-server did not become ready within ${READY_TIMEOUT_MS / 1000}s`);
+      throw new Error(
+        `llama-server did not become ready within ${readyTimeoutS}s. ` +
+          `Large models can take longer to load; raise FREELLAMA_READY_TIMEOUT (seconds).`,
+      );
     }
     throw err;
   }

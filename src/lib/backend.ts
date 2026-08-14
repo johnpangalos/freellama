@@ -35,28 +35,40 @@ const GPU_TOKENS = ["cuda", "vulkan", "hip", "rocm", "sycl", "kompute", "opencl"
 // llama.cpp ships Windows builds as .zip and macOS/Linux builds as .tar.gz.
 const ARCHIVE_RE = /\.(zip|tar\.gz|tgz)$/i;
 
+/** Requested backend variant ("cpu" and unset mean the plain CPU/Metal build). */
+function requestedBackend(): string | undefined {
+  const backend = Deno.env.get("FREELLAMA_BACKEND")?.trim().toLowerCase();
+  return backend && backend !== "cpu" ? backend : undefined;
+}
+
 /**
- * Pick the best CPU/Metal release asset for an OS/arch. Asset names look like
+ * Pick the best release asset for an OS/arch. Asset names look like
  * "llama-b5900-bin-ubuntu-x64.tar.gz", "llama-b5900-bin-macos-arm64.tar.gz",
- * "llama-b5900-bin-win-cpu-x64.zip". Exported for tests.
+ * "llama-b5900-bin-win-cpu-x64.zip", "llama-b5900-bin-ubuntu-vulkan-x64.tar.gz".
+ * Without `backend`, prefers the plain CPU/Metal build; with a backend token
+ * (e.g. "vulkan", "cuda", "rocm"), only assets carrying that token qualify.
+ * Exported for tests.
  */
 export function pickAsset(
   assets: ReleaseAsset[],
   os: typeof Deno.build.os,
   arch: typeof Deno.build.arch,
+  backend?: string,
 ): ReleaseAsset | undefined {
   const osToken = os === "darwin" ? "macos" : os === "windows" ? "win" : "ubuntu";
   const archToken = arch === "aarch64" ? "arm64" : "x64";
   const candidates = assets.filter((a) => {
     const n = a.name.toLowerCase();
     return ARCHIVE_RE.test(n) && n.includes("-bin-") && n.includes(osToken) &&
-      n.includes(archToken);
+      n.includes(archToken) && (!backend || n.includes(backend));
   });
   const score = (a: ReleaseAsset): number => {
     const n = a.name.toLowerCase();
     let s = 0;
-    if (n.includes("cpu")) s += 2;
-    for (const gpu of GPU_TOKENS) if (n.includes(gpu)) s -= 5;
+    if (!backend) {
+      if (n.includes("cpu")) s += 2;
+      for (const gpu of GPU_TOKENS) if (n.includes(gpu)) s -= 5;
+    }
     // Tie-breaker: prefer the plainest build (fewest descriptor segments).
     s -= n.split("-").length * 0.1;
     return s;
@@ -76,12 +88,23 @@ async function fetchRelease(version: string): Promise<Release> {
   return (await resp.json()) as Release;
 }
 
-async function findInstalled(): Promise<string | undefined> {
+// Backend builds install into "<tag>-<backend>" so variants of the same tag
+// don't collide; the plain CPU/Metal build keeps the bare "<tag>" dir.
+function installDirName(tag: string, backend: string | undefined): string {
+  return backend ? `${tag}-${backend}` : tag;
+}
+
+function dirMatchesBackend(dir: string, backend: string | undefined): boolean {
+  if (backend) return dir.endsWith(`-${backend}`);
+  return !GPU_TOKENS.some((gpu) => dir.includes(`-${gpu}`));
+}
+
+async function findInstalled(backend: string | undefined): Promise<string | undefined> {
   const exe = Deno.build.os === "windows" ? "llama-server.exe" : "llama-server";
   try {
     const tags: string[] = [];
     for await (const entry of Deno.readDir(binDir())) {
-      if (entry.isDirectory) tags.push(entry.name);
+      if (entry.isDirectory && dirMatchesBackend(entry.name, backend)) tags.push(entry.name);
     }
     // Rolling llama.cpp tags ("b5900") sort correctly by numeric part.
     tags.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
@@ -153,6 +176,7 @@ async function extractTarGz(archive: Uint8Array, installDir: string): Promise<vo
  * (or latest) llama.cpp release if needed. Returns the absolute binary path.
  *
  * Set FREELLAMA_LLAMA_VERSION to pin a release tag (e.g. "b5900");
+ * FREELLAMA_BACKEND to pick a GPU build variant (e.g. "vulkan", "cuda", "rocm");
  * FREELLAMA_LLAMA_SERVER to point at an existing llama-server binary and skip
  * downloads entirely.
  */
@@ -161,27 +185,34 @@ export async function ensureLlamaServer(): Promise<string> {
   if (explicit) return explicit;
 
   const version = Deno.env.get("FREELLAMA_LLAMA_VERSION") ?? "latest";
+  const backend = requestedBackend();
   const exe = Deno.build.os === "windows" ? "llama-server.exe" : "llama-server";
 
   // Without an explicit pin, reuse whatever is already installed before going online.
   if (version === "latest") {
-    const installed = await findInstalled();
+    const installed = await findInstalled(backend);
     if (installed) return installed;
   } else {
-    const existing = await findFile(join(binDir(), version), exe);
+    const existing = await findFile(join(binDir(), installDirName(version, backend)), exe);
     if (existing) return existing;
   }
 
   const release = await fetchRelease(version);
-  const asset = pickAsset(release.assets, Deno.build.os, Deno.build.arch);
+  const asset = pickAsset(release.assets, Deno.build.os, Deno.build.arch, backend);
   if (!asset) {
     throw new Error(
-      `No prebuilt llama.cpp binary for ${Deno.build.os}/${Deno.build.arch} in release ${release.tag_name}. ` +
-        `Build llama.cpp yourself and set FREELLAMA_LLAMA_SERVER to the llama-server path.`,
+      `No prebuilt llama.cpp binary for ${Deno.build.os}/${Deno.build.arch}${
+        backend ? ` with backend "${backend}"` : ""
+      } in release ${release.tag_name}. ` +
+        (backend
+          ? `Available assets:\n${release.assets.map((a) => `  - ${a.name}`).join("\n")}\n` +
+            `Pick a FREELLAMA_BACKEND matching one of these, or build llama.cpp yourself ` +
+            `and set FREELLAMA_LLAMA_SERVER to the llama-server path.`
+          : `Build llama.cpp yourself and set FREELLAMA_LLAMA_SERVER to the llama-server path.`),
     );
   }
 
-  const installDir = join(binDir(), release.tag_name);
+  const installDir = join(binDir(), installDirName(release.tag_name, backend));
   const progress = progressPrinter(`downloading llama.cpp ${release.tag_name} (${asset.name})`);
   const resp = await fetch(asset.browser_download_url, { headers: githubHeaders() });
   if (!resp.ok || !resp.body) {

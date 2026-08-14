@@ -95,6 +95,26 @@ Deno.test("pickAsset: windows prefers cpu build over cuda", () => {
   assertEquals(pickAsset(assets, "windows", "x86_64")?.name, "llama-b10068-bin-win-cpu-x64.zip");
 });
 
+Deno.test("pickAsset: backend selects the matching GPU variant", () => {
+  assertEquals(
+    pickAsset(assets, "linux", "x86_64", "vulkan")?.name,
+    "llama-b10068-bin-ubuntu-vulkan-x64.tar.gz",
+  );
+  assertEquals(
+    pickAsset(assets, "linux", "x86_64", "rocm")?.name,
+    "llama-b10068-bin-ubuntu-rocm-7.2-x64.tar.gz",
+  );
+  assertEquals(
+    pickAsset(assets, "windows", "x86_64", "cuda")?.name,
+    "llama-b10068-bin-win-cuda-12.4-x64.zip",
+  );
+});
+
+Deno.test("pickAsset: unavailable backend matches nothing", () => {
+  assertEquals(pickAsset(assets, "linux", "x86_64", "cuda"), undefined);
+  assertEquals(pickAsset(assets, "darwin", "aarch64", "vulkan"), undefined);
+});
+
 Deno.test("pickAsset: legacy .zip macOS assets still match", () => {
   const legacy = [{
     name: "llama-b5900-bin-macos-arm64.zip",

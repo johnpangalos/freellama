@@ -176,8 +176,10 @@ export interface DownloadProgress {
 }
 
 /**
- * Download a GGUF to the models directory. Idempotent: skips the download when the
- * file already exists with the expected size. Returns the local path.
+ * Download a GGUF to the models directory. Idempotent: skips the download when
+ * the file already exists with the expected size. A leftover ".partial" file
+ * from an interrupted download is resumed with an HTTP Range request rather
+ * than restarted. Returns the local path.
  */
 export async function downloadGguf(
   repo: string,
@@ -195,14 +197,32 @@ export async function downloadGguf(
 
   await Deno.mkdir(modelsDir(), { recursive: true });
   const url = `${HF_BASE}/${repo}/resolve/main/${remotePath}?download=true`;
-  const resp = await fetch(url, { headers: authHeaders() });
-  if (!resp.ok || !resp.body) {
-    throw new Error(`Download failed: HTTP ${resp.status} for ${url}`);
-  }
-  const total = Number(resp.headers.get("content-length")) || expectedSize || undefined;
 
   const tmp = dest + ".partial";
-  let received = 0;
+  let offset = 0;
+  try {
+    const stat = await Deno.stat(tmp);
+    if (stat.size > 0 && stat.size < expectedSize) offset = stat.size;
+  } catch (err) {
+    if (!(err instanceof Deno.errors.NotFound)) throw err;
+  }
+
+  const headers = new Headers(authHeaders());
+  if (offset > 0) headers.set("Range", `bytes=${offset}-`);
+  const resp = await fetch(url, { headers });
+  // A server that ignores the Range request replies 200 with the full body.
+  if (offset > 0 && resp.status !== 206) offset = 0;
+  if (!resp.ok || !resp.body) {
+    await resp.body?.cancel();
+    // Range no longer satisfiable (e.g. the remote file changed): the stale
+    // partial would fail the same way forever, so drop it before giving up.
+    if (resp.status === 416) await Deno.remove(tmp).catch(() => {});
+    throw new Error(`Download failed: HTTP ${resp.status} for ${url}`);
+  }
+  const total = expectedSize ||
+    (Number(resp.headers.get("content-length")) + offset) || undefined;
+
+  let received = offset;
   const counter = new TransformStream<Uint8Array, Uint8Array>({
     transform(chunk, controller) {
       received += chunk.byteLength;
@@ -210,15 +230,21 @@ export async function downloadGguf(
       controller.enqueue(chunk);
     },
   });
-  const file = await Deno.open(tmp, { write: true, create: true, truncate: true });
+  const file = await Deno.open(tmp, {
+    write: true,
+    create: true,
+    truncate: offset === 0,
+    append: offset > 0,
+  });
   await resp.body.pipeThrough(counter).pipeTo(file.writable);
-  // A cleanly-closed-but-truncated response must not be recorded as a valid model.
+  // A cleanly-closed-but-truncated response must not be recorded as a valid
+  // model; keep the .partial so the next attempt resumes it.
   if (expectedSize > 0 && received !== expectedSize) {
-    await Deno.remove(tmp).catch(() => {});
+    if (received > expectedSize) await Deno.remove(tmp).catch(() => {});
     throw new Error(
       `Download of ${remotePath} incomplete: got ${formatBytes(received)}, expected ${
         formatBytes(expectedSize)
-      }. Try again.`,
+      }. Try again${received < expectedSize ? " to resume" : ""}.`,
     );
   }
   await Deno.rename(tmp, dest);
